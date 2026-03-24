@@ -563,6 +563,8 @@ function mkMeals(log,meals,idx){
     html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
     grouped[t].forEach(m=>{
       if(m.isCheat){
+        // --- DAS HIER IST DER LÖSCH-BUTTON FÜR CHEAT MEALS ---
+        // Er ersetzt das Häkchen-Feld durch einen Mülleimer (🗑) und ruft delCheat() auf.
         html+=`<div class="mitem">
           <div class="mchk on" onclick="delCheat('${m.id}',${idx})" style="background:var(--border);border-color:var(--muted)">🗑</div>
           <div class="minf">
@@ -570,6 +572,7 @@ function mkMeals(log,meals,idx){
             <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
           </div></div>`;
       }else{
+        // Reguläre Mahlzeit mit Häkchen
         const on=!!log.md[m.id];
         html+=`<div class="mitem">
           <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
