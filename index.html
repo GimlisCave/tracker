@@ -530,8 +530,11 @@ function mkFitness(log,exs,key){
     const vals=log.ed[ex.id]||[];const d=countDone(log,ex);let sh='';
     for(let s=0;s<ex.sets;s++){
       const v=vals[s]??'';const isDone=Number(v)>0;
-      sh+=`<div class="spill ${isDone?'done':''}" onclick="tglRep('${ex.id}',${s},${ex.maxReps},'${key}')" style="cursor:pointer;user-select:none">
-        <span>S${s+1}:</span><span style="font-weight:bold;margin:0 2px">${isDone?ex.maxReps:0}</span><span>/${ex.maxReps}</span></div>`;
+      sh+=`<div class="spill ${isDone?'done':''}"><span>S${s+1}:</span>
+        <input type="number" value="${v}" placeholder="0" min="0" max="999"
+          oninput="setRep('${ex.id}',${s},this.value,'${key}')" 
+          style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0;font-family:inherit" inputmode="numeric">
+        <span>/${ex.maxReps}</span></div>`;
     }
     const g=ex.groupId?cfg.groups.find(g=>g.id===ex.groupId):null;
     html+=`<div class="exitem">
@@ -580,7 +583,6 @@ function patchFitness(log,key){
     item.querySelectorAll('.spill').forEach((p,si)=>{
       const isDone = Number(vals[si])>0;
       p.classList.toggle('done', isDone);
-      p.children[1].textContent = isDone ? ex.maxReps : 0;
     });
   });
   wf.classList.toggle('done',pct>=100);
