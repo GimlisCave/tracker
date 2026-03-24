@@ -92,7 +92,7 @@
   <div class="mscroll">
     <section><h3>Bestehende Übungen</h3><div class="cfg-list" id="ex-list"></div></section>
     <section>
-      <h3>Übung hinzufügen</h3>
+      <h3 id="ex-form-title">Übung hinzufügen</h3>
       <div class="aform">
         <div class="arow"><span id="nex-ico" class="itap" onclick="openIP('nex')">🏋️</span><input class="fi flex" type="text" id="nex-name" placeholder="Übungsname..."></div>
         <div class="arow"><input class="fi" type="number" id="nex-sets" placeholder="Sets" min="1" max="20" style="flex:1"><input class="fi" type="number" id="nex-max" placeholder="Max Reps" min="1" max="999" style="flex:1"></div>
@@ -113,7 +113,7 @@
     </section>
     <section><h3>Bestehende Einträge</h3><div class="cfg-list" id="ml-list"></div></section>
     <section>
-      <h3>Eintrag hinzufügen</h3>
+      <h3 id="ml-form-title">Eintrag hinzufügen</h3>
       <div class="aform">
         <div class="arow"><span id="nml-ico" class="itap" onclick="openIP('nml')">🥗</span><input class="fi flex" type="text" id="nml-name" placeholder="Name..."></div>
         <div class="dchips" id="nml-types">
@@ -194,9 +194,11 @@
 const DS_SHORT=['Mo','Di','Mi','Do','Fr','Sa','So'];
 const DS_LONG=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const JS2D=[6,0,1,2,3,4,5]; // JS getDay() 0=Sun → our 6=So
-const ICONS=['🏋️','🤸','🚴','🏃','🧘','💪','⚽','🏊','🥊','🎯','🧗','🏸',
-  '🥗','🥣','🍎','🥑','🍌','🥩','🥤','☕','🍵','💊','🌿','🥝','🧃','🍇','🥦','🥛','🍶',
-  '💧','🫗','🫙','🏺','🧴','🫀','🧠','❤️','⭐','✅','📋','💡','🔥','⚡','🌙','☀️','🌅','🧁','🍫'];
+const ICONS = ['🍎','🍌','🍉','🍇','🍓','🫐','🍒','🍑','🍍','🥝','🥑','🥦','🥕','🌽','🥐','🍞','🥞','🧀',
+'🥩','🍗','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚',
+'🍦','🍧','🍨','🍩','🍪','🎂','🍰','🍫','🍬','🍭','🍮','🍯','🥤','🧃','🥛','☕','🍵','🧉','🏋️','🏃','🚶','🚴',
+'🚵','🏊','🤽','🚣','🏄','🧗','🧘','🤸','🤺','🥊','🥋','💪','👟','⚽','🏀','🏈','⚾','🎾','🏐','🏉','🏓',
+'🏸','🏒','🏏','⛳','🏹','🎿','🏂','⛸️','🛹','🛼'];
 const MONTH_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
 // ── STATE ──
@@ -1085,7 +1087,10 @@ function editEx(i){
   pendIco.nex=ex.icon||'🏋️';
   document.getElementById('nex-ico').textContent=pendIco.nex;
   document.getElementById('btn-add-ex').textContent='💾 Speichern';
+  document.getElementById('ex-form-title').textContent='Übung bearbeiten';
+  document.getElementById('ex-form-title').scrollIntoView({behavior:'smooth'});
 }
+
 function addEx(){
   const name=document.getElementById('nex-name').value.trim();
   const sets=parseInt(document.getElementById('nex-sets').value)||3;
@@ -1096,6 +1101,7 @@ function addEx(){
     cfg.exercises[editExIdx]={...cfg.exercises[editExIdx],icon:pendIco.nex,name,sets,maxReps,groupId};
     editExIdx=-1;
     document.getElementById('btn-add-ex').textContent='+ Übung hinzufügen';
+    document.getElementById('ex-form-title').textContent='Übung hinzufügen';
     showToast('🏋️ Übung gespeichert');
   }else{
     cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId});
@@ -1106,6 +1112,7 @@ function addEx(){
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
   renderExList();
 }
+
 function delEx(i){
   if(!confirm('Übung wirklich löschen?'))return;
   cfg.exercises.splice(i,1);saveCfg();renderExList();
@@ -1161,6 +1168,8 @@ function editMl(i){
     c.classList.toggle('on', ts.includes(c.dataset.t));
   });
   document.getElementById('btn-add-ml').textContent='💾 Speichern';
+  document.getElementById('ml-form-title').textContent='Eintrag bearbeiten';
+  document.getElementById('ml-form-title').scrollIntoView({behavior:'smooth'});
 }
 
 function addMl(){
@@ -1174,6 +1183,7 @@ function addMl(){
     cfg.meals[editMlIdx]={...cfg.meals[editMlIdx],icon:pendIco.nml,types,cals,name,desc};
     editMlIdx=-1;
     document.getElementById('btn-add-ml').textContent='+ Hinzufügen';
+    document.getElementById('ml-form-title').textContent='Eintrag hinzufügen';
     showToast('🥗 Eintrag gespeichert');
   }else{
     cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc});
@@ -1187,6 +1197,7 @@ function addMl(){
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();
 }
+
 function delMl(i){
   if(!confirm('Mahlzeit wirklich löschen?'))return;
   cfg.meals.splice(i,1);saveCfg();renderMlList();
