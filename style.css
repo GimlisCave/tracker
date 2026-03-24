@@ -3,7 +3,7 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;display:flex;flex-direction:column}
 .hdr{flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);padding:13px 17px 10px;display:flex;align-items:center;justify-content:space-between;z-index:10}
-.hdr h1{font-family:'DM Serif Display',serif;font-size:21px;letter-spacing:-.5px}
+.hdr h1{font-size:21px;letter-spacing:-.5px}
 .hdr-sub{font-size:11px;color:var(--muted);display:block;margin-top:1px}
 .hdr-r{display:flex;gap:7px}
 .ibtn{background:var(--surface);border:1px solid var(--border);border-radius:9px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all .14s;flex-shrink:0}
@@ -78,7 +78,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .swipe-page{flex-shrink:0;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 17px 30px}
 /* ══ HEADER ══ */
 .hdr-date-wrap{display:flex;flex-direction:column}
-.hdr-date-wrap .hdr-title{font-family:'DM Serif Display',serif;font-size:17px;letter-spacing:-.3px;line-height:1.2}
+.hdr-date-wrap .hdr-title{font-size:17px;letter-spacing:-.3px;line-height:1.2}
 .hdr-date-wrap .hdr-sub{font-size:11px;color:var(--muted);display:block;margin-top:1px}
 /* ══ SORT BAR at bottom ══ */
 .bbar-sort{flex-shrink:0;display:flex;gap:6px;padding:4px 17px 10px;overflow-x:auto;scrollbar-width:none;background:var(--bg);border-top:1px solid var(--border)}
@@ -95,14 +95,14 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .ov{display:none;position:fixed;inset:0;z-index:200;background:var(--bg);flex-direction:column}
 .ov.open{display:flex}
 .ovhdr{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:13px 17px;display:flex;align-items:center;gap:11px}
-.ovhdr h2{font-family:'DM Serif Display',serif;font-size:19px;flex:1}
+.ovhdr h2{font-size:19px;flex:1}
 .back{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 3px}
 /* Kalender nicht scrollbar */
 #ov-cal{overflow:hidden}
 #ov-cal .mscroll{flex:1;overflow:hidden;padding:10px 14px 20px;display:flex;flex-direction:column}
 .mscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 17px 40px}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0}
-.cal-nav h3{font-family:'DM Serif Display',serif;font-size:17px;margin:0}
+.cal-nav h3{font-size:17px;margin:0}
 .cal-navbtn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text)}
 .cal-navbtn:active{transform:scale(.88)}
 .cal-dh{text-align:center;font-size:9px;color:var(--muted);font-weight:600;padding:3px 0;text-transform:uppercase;letter-spacing:.3px}
