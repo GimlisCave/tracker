@@ -97,7 +97,7 @@
         <div class="arow"><span id="nex-ico" class="itap" onclick="openIP('nex')">🏋️</span><input class="fi flex" type="text" id="nex-name" placeholder="Übungsname..."></div>
         <div class="arow"><input class="fi" type="number" id="nex-sets" placeholder="Sets" min="1" max="20" style="flex:1"><input class="fi" type="number" id="nex-max" placeholder="Max Reps" min="1" max="999" style="flex:1"></div>
         <select class="fi full" id="nex-grp"></select>
-        <button class="btn gr full" onclick="addEx()">+ Übung hinzufügen</button>
+        <button class="btn gr full" id="btn-add-ex" onclick="addEx()">+ Übung hinzufügen</button>
       </div>
     </section>
   </div>
@@ -126,7 +126,7 @@
           <input class="fi num" type="number" id="nml-cals" placeholder="kcal" min="0" style="flex:1">
           <input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..." style="flex:2">
         </div>
-        <button class="btn pk full" onclick="addMl()">+ Hinzufügen</button>
+        <button class="btn pk full" id="btn-add-ml" onclick="addMl()">+ Hinzufügen</button>
       </div>
     </section>
   </div>
@@ -147,7 +147,7 @@
         <option value="Mittagessen">Mittagessen</option>
         <option value="Abendessen">Abendessen</option>
       </select>
-      <button class="btn pk full" onclick="saveCheat()">+ Eintragen</button>
+      <button class="btn pk full" id="btn-save-cheat" onclick="saveCheat()">+ Eintragen</button>
     </div>
   </div>
 </div>
@@ -214,36 +214,174 @@ let activeIdx=0; // 0 = today
 let calViewYear,calViewMonth;
 let pendIco={glass:'🥤',nex:'🏋️',nml:'🥗',ch:'🍩'};
 let cheatIdx=0;
+let editExIdx = -1;
+let editMlIdx = -1;
+let editCheatId = null;
 
-function openCheat(idx){
-  cheatIdx=idx;
-  pendIco.ch='🍩';
-  document.getElementById('ch-ico').textContent='🍩';
-  document.getElementById('ch-name').value='';
-  document.getElementById('ch-cals').value='';
-  document.getElementById('ch-desc').value='';
-  document.getElementById('ov-cheat').classList.add('open');
+function initItemSwipes() {
+  let sx=0, sy=0, sEl=null, sLocked=false;
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest('.sit-content');
+    if(!el) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    sEl = el;
+    sLocked = false;
+    sEl.classList.add('swiping');
+  }, {passive: true});
+  document.addEventListener('touchmove', e => {
+    if(!sEl) return;
+    const dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if(!sLocked) {
+      if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+        sLocked = 'h';
+      } else if(Math.abs(dy) > 10) {
+        sLocked = 'v';
+        sEl.classList.remove('swiping');
+        sEl = null;
+        return;
+      }
+    }
+    if(sLocked === 'h') {
+      if(e.cancelable) e.preventDefault();
+      const wrap = sEl.parentElement;
+      const hasDel = !!sEl.dataset.del;
+      const hasEdit = !!sEl.dataset.edit;
+      let moveX = dx;
+      if(dx > 0 && !hasDel) moveX = 0;
+      if(dx < 0 && !hasEdit) moveX = 0;
+      sEl.style.transform = `translateX(${moveX}px)`;
+      if(moveX > 0) {
+        wrap.style.background = '#ff3b30';
+        wrap.querySelector('.sit-bg-l').style.display='flex';
+        if(wrap.querySelector('.sit-bg-r')) wrap.querySelector('.sit-bg-r').style.display='none';
+      } else if (moveX < 0) {
+        wrap.style.background = '#34c759';
+        wrap.querySelector('.sit-bg-l').style.display='none';
+        if(wrap.querySelector('.sit-bg-r')) wrap.querySelector('.sit-bg-r').style.display='flex';
+      }
+    }
+  }, {passive: false});
+  document.addEventListener('touchend', e => {
+    if(!sEl) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    sEl.classList.remove('swiping');
+    if(sLocked === 'h') {
+      if(dx > 80 && sEl.dataset.del) {
+        new Function(sEl.dataset.del)();
+        sEl.style.transform = 'translateX(0)';
+      } else if(dx < -80 && sEl.dataset.edit) {
+        new Function(sEl.dataset.edit)();
+        sEl.style.transform = 'translateX(0)';
+      } else {
+        sEl.style.transform = 'translateX(0)';
+      }
+    }
+    sEl = null;
+    sLocked = false;
+  }, {passive: true});
 }
 
+function initSwipe(){
+  const wrap=document.getElementById('swipe-wrap');
+  let sx=0,sy=0,locked=null,moved=false,startIdx=0;
+  wrap.addEventListener('touchstart',e=>{
+    if(e.target.closest('.sit-content') || e.target.closest('.drgh')) return;
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+    locked=null;moved=false;startIdx=activeIdx;
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    if(e.target.closest('.sit-content') || e.target.closest('.drgh')) return;
+    const dx=e.touches[0].clientX-sx;
+    const dy=e.touches[0].clientY-sy;
+    if(!locked){
+      if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)locked='h';
+      else if(Math.abs(dy)>8)locked='v';
+    }
+    if(locked==='h'){
+      if(e.cancelable)e.preventDefault();
+      const inner=document.getElementById('swipe-inner');
+      inner.classList.add('no-anim');
+      inner.style.transform=`translateX(calc(${-activeIdx*(100/7)}% + ${dx}px))`;
+      moved=true;
+    }
+  },{passive:false});
+  wrap.addEventListener('touchend',e=>{
+    if(!moved)return;
+    const dx=e.changedTouches[0].clientX-sx;
+    const inner=document.getElementById('swipe-inner');
+    inner.classList.remove('no-anim');
+    if(Math.abs(dx)>50){
+      if(dx<0&&activeIdx<6)switchToIdx(activeIdx+1);
+      else if(dx>0&&activeIdx>0)switchToIdx(activeIdx-1);
+      else inner.style.transform=`translateX(${-activeIdx*(100/7)}%)`;
+    }else{
+      inner.style.transform=`translateX(${-activeIdx*(100/7)}%)`;
+    }
+    locked=null;moved=false;
+  },{passive:true});
+}
+
+function openCheat(idx) {
+  cheatIdx = idx;
+  editCheatId = null;
+  pendIco.ch = '🍩';
+  document.getElementById('ch-ico').textContent = '🍩';
+  document.getElementById('ch-name').value = '';
+  document.getElementById('ch-cals').value = '';
+  document.getElementById('ch-desc').value = '';
+  document.getElementById('ch-type').value = 'Snack';
+  document.getElementById('btn-save-cheat').textContent = '+ Eintragen';
+  document.getElementById('ov-cheat').classList.add('open');
+}
+function editCheat(id, idx) {
+  const log = glog(idx);
+  const ch = log.cm.find(c => c.id === id);
+  if(!ch) return;
+  cheatIdx = idx;
+  editCheatId = id;
+  pendIco.ch = ch.icon || '🍩';
+  document.getElementById('ch-ico').textContent = pendIco.ch;
+  document.getElementById('ch-name').value = ch.name || '';
+  document.getElementById('ch-cals').value = ch.cals || '';
+  document.getElementById('ch-desc').value = ch.desc || '';
+  document.getElementById('ch-type').value = ch.type || 'Snack';
+  document.getElementById('btn-save-cheat').textContent = '💾 Speichern';
+  document.getElementById('ov-cheat').classList.add('open');
+}
 function closeCheat(){
   document.getElementById('ov-cheat').classList.remove('open');
 }
 
-function saveCheat(){
-  const name=document.getElementById('ch-name').value.trim();
-  const cals=parseInt(document.getElementById('ch-cals').value)||0;
-  const desc=document.getElementById('ch-desc').value.trim();
-  const type=document.getElementById('ch-type').value;
-  if(!name){showToast('⚠️ Name fehlt');return;}
-  const log=glog(cheatIdx);
-  if(!log.cm)log.cm=[];
-  log.cm.push({id:'c'+Date.now(),icon:pendIco.ch,name,cals,desc,type});
+function saveCheat() {
+  const name = document.getElementById('ch-name').value.trim();
+  const cals = parseInt(document.getElementById('ch-cals').value) || 0;
+  const desc = document.getElementById('ch-desc').value.trim();
+  const type = document.getElementById('ch-type').value;
+  if (!name) { showToast('⚠️ Name fehlt'); return; }
+  const log = glog(cheatIdx);
+  if (!log.cm) log.cm = [];
+  if (editCheatId) {
+    const idxToUpdate = log.cm.findIndex(c => c.id === editCheatId);
+    if(idxToUpdate >= 0) log.cm[idxToUpdate] = { ...log.cm[idxToUpdate], icon: pendIco.ch, name, cals, desc, type };
+    showToast('🍩 Cheat Meal gespeichert!');
+  } else {
+    log.cm.push({ id: 'c' + Date.now(), icon: pendIco.ch, name, cals, desc, type });
+    showToast('🍩 Cheat Meal eingetragen!');
+  }
   saveLogs();
   closeCheat();
   renderWidgetsFor(cheatIdx);
-  showToast('🍩 Cheat Meal eingetragen!');
 }
-
+function tglRep(exId, si, maxReps, idx) {
+  const log = glog(idx);
+  if(!log.ed[exId]) log.ed[exId] = [];
+  const cur = Number(log.ed[exId][si]) || 0;
+  log.ed[exId][si] = cur > 0 ? 0 : maxReps;
+  saveLogs();
+  patchFitness(log, idx);
+}
 function delCheat(id,idx){
   if(!confirm('Ungeplantes Essen wirklich löschen?'))return;
   const log=glog(idx);
@@ -487,10 +625,8 @@ function mkFitness(log,exs,idx){
     const vals=log.ed[ex.id]||[];const d=countDone(log,ex);let sh='';
     for(let s=0;s<ex.sets;s++){
       const v=vals[s]??'';const isDone=Number(v)>0;
-      sh+=`<div class="spill ${isDone?'done':''}"><span>S${s+1}:</span>
-        <input type="number" value="${v}" placeholder="0" min="0"
-          oninput="setRep('${ex.id}',${s},this.value,${idx})" style="color:inherit">
-        <span>/${ex.maxReps}</span></div>`;
+      sh+=`<div class="spill ${isDone?'done':''}" onclick="tglRep('${ex.id}',${s},${ex.maxReps},${idx})" style="cursor:pointer;user-select:none">
+        <span>S${s+1}:</span><span style="font-weight:bold;margin:0 2px">${isDone?ex.maxReps:0}</span><span>/${ex.maxReps}</span></div>`;
     }
     const g=ex.groupId?cfg.groups.find(g=>g.id===ex.groupId):null;
     html+=`<div class="exitem">
@@ -514,13 +650,15 @@ function mkFitness(log,exs,idx){
         <div class="plbl"><span>${done} erledigt</span><span>${tot} Sätze</span></div></div>
       <div class="exlist">${html||'<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
   return w;
-}function setRep(exId,si,val,idx){
+}
+
+function setRep(exId,si,val,idx){
   const log=glog(idx);
   if(!log.ed[exId])log.ed[exId]=[];
   log.ed[exId][si]=val;saveLogs();patchFitness(log,idx);
 }
 function patchFitness(log,idx){
-  const dex=forDayIdx(cfg.exercises,idx);
+  const dex=cfg.exercises;
   let tot=0,done=0;
   dex.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex);});
   const pct=tot>0?Math.round(done/tot*100):0;
@@ -534,11 +672,14 @@ function patchFitness(log,idx){
     const d=countDone(log,ex);
     const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${ex.sets} ✓`;
     const vals=log.ed[ex.id]||[];
-    item.querySelectorAll('.spill').forEach((p,si)=>p.classList.toggle('done',Number(vals[si])>0));
+    item.querySelectorAll('.spill').forEach((p,si)=>{
+      const isDone = Number(vals[si])>0;
+      p.classList.toggle('done', isDone);
+      p.children[1].textContent = isDone ? ex.maxReps : 0;
+    });
   });
   wf.classList.toggle('done',pct>=100);
 }
-
 // MEALS
 function mkMeals(log,meals,idx){
   if(!cfg.calories)cfg.calories={goal:2000};
@@ -568,22 +709,27 @@ function mkMeals(log,meals,idx){
     html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
     grouped[t].forEach(m=>{
       if(m.isCheat){
-        html+=`<div class="mitem">
-          <div class="mchk on" onclick="delCheat('${m.id}',${idx})" style="background:var(--border);border-color:var(--muted)">🗑</div>
-          <div class="minf">
-            <div class="mtim" style="color:var(--accent3)">${m.cals||0} kcal</div>
-            <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
-            ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
-          </div></div>`;
+        html+=`<div class="sit-wrap">
+          <div class="sit-bg sit-bg-l">🗑</div>
+          <div class="sit-bg sit-bg-r">✏️</div>
+          <div class="sit-content mitem" data-del="delCheat('${m.id}',${idx})" data-edit="editCheat('${m.id}',${idx})">
+            <div class="minf">
+              <div class="mtim" style="color:var(--accent3)">${m.cals||0} kcal</div>
+              <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
+              ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+            </div>
+          </div>
+        </div>`;
       }else{
         const on=!!log.md[m.id];
-        html+=`<div class="mitem">
-          <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
+        html+=`<div class="mitem" onclick="tglM('${m.id}',${idx})" style="${on?'opacity:.5':''};display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:6px;border-radius:var(--rsm)">
           <div class="minf">
             <div class="mtim">${m.cals||0} kcal</div>
-            <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
+            <div class="mnam" style="${on?'text-decoration:line-through':''}">${m.icon||''} ${m.name}</div>
             ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
-          </div></div>`;
+          </div>
+          <div style="font-size:20px;color:var(--accent3);font-weight:bold;margin-right:8px">${on?'✓':''}</div>
+        </div>`;
       }
     });
   });
@@ -891,20 +1037,35 @@ function renderExList(){
   const el=document.getElementById('ex-list');if(!el)return;
   if(!cfg.exercises.length){el.innerHTML='<div class="empty">Noch keine Übungen.</div>';return;}
   el.innerHTML=cfg.exercises.map((ex,i)=>`
-    <div class="crow">
-      <div class="ctop">
-        <span class="cico" onclick="openIP('ex_${i}')">${ex.icon||'🏋️'}</span>
-        <span class="cname">${ex.name}</span>
-        <span style="font-size:11px;color:var(--muted)">${ex.sets}×${ex.maxReps}</span>
-        <span class="cdel" onclick="delEx(${i})">🗑</span>
-      </div>
-      <div class="cmeta">
-        <select class="csel" onchange="updExGrp(${i},this.value)">
-          <option value="">Keine Gruppe</option>
-          ${cfg.groups.map(g=>`<option value="${g.id}" ${ex.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
-        </select>
+    <div class="sit-wrap">
+      <div class="sit-bg sit-bg-l">🗑</div>
+      <div class="sit-bg sit-bg-r">✏️</div>
+      <div class="sit-content crow" data-del="delEx(${i})" data-edit="editEx(${i})">
+        <div class="ctop">
+          <span class="cico" onclick="openIP('ex_${i}'); event.stopPropagation()">${ex.icon||'🏋️'}</span>
+          <span class="cname">${ex.name}</span>
+          <span style="font-size:11px;color:var(--muted)">${ex.sets}×${ex.maxReps}</span>
+        </div>
+        <div class="cmeta">
+          <select class="csel" onchange="updExGrp(${i},this.value); event.stopPropagation()">
+            <option value="">Keine Gruppe</option>
+            ${cfg.groups.map(g=>`<option value="${g.id}" ${ex.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
+          </select>
+        </div>
       </div>
     </div>`).join('');
+}
+
+function editEx(i){
+  const ex=cfg.exercises[i];
+  editExIdx=i;
+  document.getElementById('nex-name').value=ex.name||'';
+  document.getElementById('nex-sets').value=ex.sets||3;
+  document.getElementById('nex-max').value=ex.maxReps||10;
+  document.getElementById('nex-grp').value=ex.groupId||'';
+  pendIco.nex=ex.icon||'🏋️';
+  document.getElementById('nex-ico').textContent=pendIco.nex;
+  document.getElementById('btn-add-ex').textContent='💾 Speichern';
 }
 function addEx(){
   const name=document.getElementById('nex-name').value.trim();
@@ -912,10 +1073,19 @@ function addEx(){
   const maxReps=parseInt(document.getElementById('nex-max').value)||10;
   const groupId=document.getElementById('nex-grp').value||null;
   if(!name){showToast('⚠️ Name fehlt');return;}
-  cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId});saveCfg();
+  if(editExIdx>=0){
+    cfg.exercises[editExIdx]={...cfg.exercises[editExIdx],icon:pendIco.nex,name,sets,maxReps,groupId};
+    editExIdx=-1;
+    document.getElementById('btn-add-ex').textContent='+ Übung hinzufügen';
+    showToast('🏋️ Übung gespeichert');
+  }else{
+    cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId});
+    showToast('🏋️ Übung hinzugefügt');
+  }
+  saveCfg();
   document.getElementById('nex-name').value='';document.getElementById('nex-sets').value='';document.getElementById('nex-max').value='';
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
-  renderExList();showToast('🏋️ Übung hinzugefügt');
+  renderExList();
 }
 function delEx(i){
   if(!confirm('Übung wirklich löschen?'))return;
@@ -945,16 +1115,35 @@ function renderMlList(){
   el.innerHTML=cfg.meals.map((m,i)=>{
     const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
     return `
-    <div class="crow">
-      <div class="ctop">
-        <span class="cico" onclick="openIP('ml_${i}')">${m.icon||'🥗'}</span>
-        <span class="cname">${ts.join(', ')} · ${m.name}</span>
-        <span style="font-size:11px;color:var(--muted)">${m.cals||0} kcal</span>
-        <span class="cdel" onclick="delMl(${i})">🗑</span>
+    <div class="sit-wrap">
+      <div class="sit-bg sit-bg-l">🗑</div>
+      <div class="sit-bg sit-bg-r">✏️</div>
+      <div class="sit-content crow" data-del="delMl(${i})" data-edit="editMl(${i})">
+        <div class="ctop" style="margin-bottom:0">
+          <span class="cico" onclick="openIP('ml_${i}'); event.stopPropagation()">${m.icon||'🥗'}</span>
+          <span class="cname">${ts.join(', ')} · ${m.name}</span>
+          <span style="font-size:11px;color:var(--muted)">${m.cals||0} kcal</span>
+        </div>
       </div>
     </div>`;
   }).join('');
 }
+
+function editMl(i){
+  const m=cfg.meals[i];
+  editMlIdx=i;
+  document.getElementById('nml-name').value=m.name||'';
+  document.getElementById('nml-cals').value=m.cals||'';
+  document.getElementById('nml-desc').value=m.desc||'';
+  pendIco.nml=m.icon||'🥗';
+  document.getElementById('nml-ico').textContent=pendIco.nml;
+  const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
+  document.querySelectorAll('#nml-types .dchip').forEach(c=>{
+    c.classList.toggle('on', ts.includes(c.dataset.t));
+  });
+  document.getElementById('btn-add-ml').textContent='💾 Speichern';
+}
+
 function addMl(){
   const name=document.getElementById('nml-name').value.trim();
   const types=[...document.querySelectorAll('#nml-types .dchip.on')].map(c=>c.dataset.t);
@@ -962,13 +1151,22 @@ function addMl(){
   const desc=document.getElementById('nml-desc').value.trim();
   if(!name){showToast('⚠️ Name fehlt');return;}
   if(!types.length){showToast('⚠️ Typ wählen');return;}
-  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc});
+  if(editMlIdx>=0){
+    cfg.meals[editMlIdx]={...cfg.meals[editMlIdx],icon:pendIco.nml,types,cals,name,desc};
+    editMlIdx=-1;
+    document.getElementById('btn-add-ml').textContent='+ Hinzufügen';
+    showToast('🥗 Eintrag gespeichert');
+  }else{
+    cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc});
+    showToast('🥗 Eintrag hinzugefügt');
+  }
   saveCfg();
   document.getElementById('nml-name').value='';
   document.getElementById('nml-cals').value='';
   document.getElementById('nml-desc').value='';
+  document.querySelectorAll('#nml-types .dchip').forEach(c=>c.classList.remove('on'));
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
-  renderMlList();showToast('🥗 Eintrag hinzugefügt');
+  renderMlList();
 }
 function delMl(i){
   if(!confirm('Mahlzeit wirklich löschen?'))return;
@@ -1010,6 +1208,7 @@ renderTabs();
 updateHeader();
 renderAllWidgets();
 initSwipe();
+initItemSwipes();
 </script>
 </body>
 </html>
