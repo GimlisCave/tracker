@@ -63,6 +63,27 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .pbar{height:6px;background:var(--border);border-radius:99px;overflow:hidden}
 .pfill{height:100%;border-radius:99px;transition:width .32s ease;min-width:0}
 
+
+.mitem, .exitem { position: relative; padding-right: 35px !important; }
+.sort-controls {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sort-btn {
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  user-select: none;
+}
+.sort-btn:active { color: var(--accent); }
+
 .plbl{font-size:10px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
 .glasses{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
 .gbtn{width:50px;height:57px;border-radius:9px;border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:20px;background:var(--surface2);transition:all .13s}

@@ -744,7 +744,25 @@ function importData(inp){
     inp.value='';
   };r.readAsText(f);
 }
+function moveEx(idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= cfg.exercises.length) return;
+  const el = cfg.exercises.splice(idx, 1)[0];
+  cfg.exercises.splice(to, 0, el);
+  saveCfg();
+  renderExList(); // Liste im Einstellungs-Menü neu laden
+  renderThreePages(); // Widgets auf der Hauptseite aktualisieren
+}
 
+function moveMl(idx, dir) {
+  const to = idx + dir;
+  if (to < 0 || to >= cfg.meals.length) return;
+  const el = cfg.meals.splice(idx, 1)[0];
+  cfg.meals.splice(to, 0, el);
+  saveCfg();
+  renderMlList();
+  renderThreePages();
+}
 function openCal(){
   calViewYear=activeDate.getFullYear();calViewMonth=activeDate.getMonth();
   renderCal();
@@ -931,24 +949,20 @@ function initEx(){renderExList();buildGSel('nex-grp');document.getElementById('n
 function renderExList(){
   const el=document.getElementById('ex-list');if(!el)return;
   if(!cfg.exercises.length){el.innerHTML='<div class="empty">Noch keine Übungen.</div>';return;}
-  el.innerHTML=cfg.exercises.map((ex,i)=>`
-    <div class="sit-wrap">
-      <div class="sit-bg sit-bg-l">🗑</div>
-      <div class="sit-bg sit-bg-r">✏️</div>
-      <div class="sit-content crow" data-del="delEx(${i})" data-edit="editEx(${i})">
-        <div class="ctop">
-          <span class="cico" onclick="openIP('ex_${i}'); event.stopPropagation()">${ex.icon||'🏋️'}</span>
-          <span class="cname">${ex.name}</span>
-          <span style="font-size:11px;color:var(--muted)">${ex.sets}×${ex.maxReps}</span>
-        </div>
-        <div class="cmeta">
-          <select class="csel" onchange="updExGrp(${i},this.value); event.stopPropagation()">
-            <option value="">Keine Gruppe</option>
-            ${cfg.groups.map(g=>`<option value="${g.id}" ${ex.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
-          </select>
-        </div>
+  el.innerHTML=cfg.exercises.map((ex,i)=>`<div class="sit-wrap">
+  <div class="sit-bg sit-bg-l">🗑</div>
+  <div class="sit-bg sit-bg-r">✏️</div>
+  <div class="sit-content crow" data-del="delEx(${i})" data-edit="editEx(${i})">
+    <div class="ctop">
+      <span class="cico" onclick="openIP('ex_${i}'); event.stopPropagation()">${ex.icon||'🏋️'}</span>
+      <span class="cname">${ex.name}</span>
+      <div class="sort-controls">
+        <span class="sort-btn" onclick="event.stopPropagation();moveEx(${i},-1)">▲</span>
+        <span class="sort-btn" onclick="event.stopPropagation();moveEx(${i},1)">▼</span>
       </div>
-    </div>`).join('');
+    </div>
+    </div>
+</div>`).join('');
 }
 
 function editEx(i){
@@ -1013,18 +1027,20 @@ function renderMlList(){
   if(!cfg.meals.length){el.innerHTML='<div class="empty">Noch keine Einträge.</div>';return;}
   el.innerHTML=cfg.meals.map((m,i)=>{
     const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
-    return `
-    <div class="sit-wrap">
-      <div class="sit-bg sit-bg-l">🗑</div>
-      <div class="sit-bg sit-bg-r">✏️</div>
-      <div class="sit-content crow" data-del="delMl(${i})" data-edit="editMl(${i})">
-        <div class="ctop" style="margin-bottom:0">
-          <span class="cico" onclick="openIP('ml_${i}'); event.stopPropagation()">${m.icon||'🥗'}</span>
-          <span class="cname">${ts.join(', ')} · ${m.name}</span>
-          <span style="font-size:11px;color:var(--muted)">${m.cals||0} kcal</span>
-        </div>
+    return `<div class="sit-wrap">
+  <div class="sit-bg sit-bg-l">🗑</div>
+  <div class="sit-bg sit-bg-r">✏️</div>
+  <div class="sit-content crow" data-del="delMl(${i})" data-edit="editMl(${i})">
+    <div class="ctop" style="margin-bottom:0">
+      <span class="cico" onclick="openIP('ml_${i}'); event.stopPropagation()">${m.icon||'🥗'}</span>
+      <span class="cname">${ts.join(', ')} · ${m.name}</span>
+      <div class="sort-controls">
+        <span class="sort-btn" onclick="event.stopPropagation();moveMl(${i},-1)">▲</span>
+        <span class="sort-btn" onclick="event.stopPropagation();moveMl(${i},1)">▼</span>
       </div>
-    </div>`;
+    </div>
+  </div>
+</div>`;
   }).join('');
 }
 
