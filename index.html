@@ -335,21 +335,7 @@ function openCheat(idx) {
   document.getElementById('btn-save-cheat').textContent = '+ Eintragen';
   document.getElementById('ov-cheat').classList.add('open');
 }
-function editCheat(id, idx) {
-  const log = glog(idx);
-  const ch = log.cm.find(c => c.id === id);
-  if(!ch) return;
-  cheatIdx = idx;
-  editCheatId = id;
-  pendIco.ch = ch.icon || '🍩';
-  document.getElementById('ch-ico').textContent = pendIco.ch;
-  document.getElementById('ch-name').value = ch.name || '';
-  document.getElementById('ch-cals').value = ch.cals || '';
-  document.getElementById('ch-desc').value = ch.desc || '';
-  document.getElementById('ch-type').value = ch.type || 'Snack';
-  document.getElementById('btn-save-cheat').textContent = '💾 Speichern';
-  document.getElementById('ov-cheat').classList.add('open');
-}
+
 function closeCheat(){
   document.getElementById('ov-cheat').classList.remove('open');
 }
@@ -383,14 +369,20 @@ function tglRep(exId, si, maxReps, idx) {
   patchFitness(log, idx);
 }
 function delCheat(id,idx){
-  if(!confirm('Ungeplantes Essen wirklich löschen?'))return;
+  // Sicherheitsabfrage, die beim Klick auf den Eintrag erscheint
+  if(!confirm('Sind Sie sicher, dass Sie dieses ungeplante Essen löschen wollen?')) return;
+  
   const log=glog(idx);
   if(log.cm){
+    // Eintrag aus der Liste filtern
     log.cm=log.cm.filter(c=>c.id!==id);
-    saveLogs();
-    renderWidgetsFor(idx);
+    saveLogs(); // Speichern
+    
+    // Das Widget sofort neu laden, damit der Eintrag verschwindet
+    renderWidgetsFor(idx); 
   }
 }
+
 function toKey(d){return d.toISOString().split('T')[0];}
 
 function buildDays(){
@@ -684,67 +676,94 @@ function patchFitness(log,idx){
 function mkMeals(log,meals,idx){
   if(!cfg.calories)cfg.calories={goal:2000};
   if(!log.cm)log.cm=[];
+  
   let chkCals=0;
+  // Kalorien zählen (regulär + cheat)
   meals.forEach(m=>{if(log.md[m.id])chkCals+=(m.cals||0);});
   log.cm.forEach(c=>{chkCals+=(c.cals||0);});
-  const pct=Math.min(100,Math.round(chkCals/cfg.calories.goal*100));
+  
+  const goal = cfg.calories.goal;
+  const pct=Math.min(100,Math.round(chkCals/goal*100));
+  
   const order=['Frühstück','Mittagessen','Abendessen','Snack'];
   const grouped={};
   order.forEach(o=>grouped[o]=[]);
+  
+  // Reguläre Mahlzeiten einsortieren
   meals.forEach(m=>{
     const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
     ts.forEach(t=>{
-      if(!grouped[t])grouped[t]=[];
-      grouped[t].push({...m,isCheat:false});
+      if(grouped[t]) grouped[t].push({...m,isCheat:false});
     });
   });
+  
+  // Ungeplantes Essen einsortieren
   log.cm.forEach(c=>{
     const t=c.type||'Snack';
-    if(!grouped[t])grouped[t]=[];
-    grouped[t].push({...c,isCheat:true});
+    if(grouped[t]) grouped[t].push({...c,isCheat:true});
   });
+  
   let html='';
   order.forEach(t=>{
     if(!grouped[t]||!grouped[t].length)return;
-    html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
+    
+    // Kategorie-Header (z.B. FRÜHSTÜCK)
+    html+=`<div style="font-size:11px;color:var(--muted);margin:12px 0 6px 4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${t}</div>`;
+    
     grouped[t].forEach(m=>{
       if(m.isCheat){
-        html+=`<div class="sit-wrap">
-          <div class="sit-bg sit-bg-l">🗑</div>
-          <div class="sit-bg sit-bg-r">✏️</div>
-          <div class="sit-content mitem" data-del="delCheat('${m.id}',${idx})" data-edit="editCheat('${m.id}',${idx})">
+        // --- NEU: UNGEPLANTES ESSEN (OHNE SWIPE, KLICK ZUM LÖSCHEN) ---
+        html+=`
+          <div class="mitem cheat" onclick="delCheat('${m.id}',${idx})" style="cursor:pointer; border-left: 3px solid var(--accent3); padding-left: 10px;">
             <div class="minf">
-              <div class="mtim" style="color:var(--accent3)">${m.cals||0} kcal</div>
+              <div class="mtim" style="color:var(--accent3); font-weight: bold;">${(m.cals||0).toLocaleString('de')} kcal</div>
               <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
               ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
             </div>
-          </div>
-        </div>`;
+            <div style="font-size:12px; color:var(--muted); margin-right:8px;">🗑</div>
+          </div>`;
       }else{
+        // Reguläre Mahlzeit mit Checkbox
         const on=!!log.md[m.id];
-        html+=`<div class="mitem" onclick="tglM('${m.id}',${idx})" style="${on?'opacity:.5':''};display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:6px;border-radius:var(--rsm)">
-          <div class="minf">
-            <div class="mtim">${m.cals||0} kcal</div>
-            <div class="mnam" style="${on?'text-decoration:line-through':''}">${m.icon||''} ${m.name}</div>
-            ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
-          </div>
-          <div style="font-size:20px;color:var(--accent3);font-weight:bold;margin-right:8px">${on?'✓':''}</div>
-        </div>`;
+        html+=`
+          <div class="mitem" onclick="tglM('${m.id}',${idx})" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
+            <div class="minf">
+              <div class="mtim">${(m.cals||0).toLocaleString('de')} kcal</div>
+              <div class="mnam" style="${on?'text-decoration:line-through;opacity:.6':''}">${m.icon||''} ${m.name}</div>
+              ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+            </div>
+            <div class="mchk ${on?'on':''}" style="margin-left:10px; flex-shrink:0;">${on?'✓':''}</div>
+          </div>`;
       }
     });
   });
+  
+  // Widget HTML zusammenbauen
   const w=document.createElement('div');
-  w.className='widget open'+(pct>=100?' done':'');w.id='wm-'+idx;w.dataset.o=2;
-  w.innerHTML=`<div class="drgh"><span>⠿</span></div>
+  w.className='widget open'+(pct>=100?' done':'');
+  w.id='wm-'+idx;
+  w.dataset.o=2;
+  
+  w.innerHTML=`
+    <div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wm-${idx}',${idx})">
       <div class="wico wm">🥗</div>
-      <div class="wtit"><b>Mahlzeiten</b><small>${chkCals.toLocaleString('de')} / ${cfg.calories.goal.toLocaleString('de')} kcal · ${pct}%</small></div>
-      <div class="wchev">▾</div></div>
+      <div class="wtit">
+        <b>Mahlzeiten</b>
+        <small>${chkCals.toLocaleString('de')} / ${goal.toLocaleString('de')} kcal · ${pct}%</small>
+      </div>
+      <div class="wchev">▾</div>
+    </div>
     <div class="wbody">
-      <div class="prog"><div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
-        <div class="plbl"><span>${chkCals.toLocaleString('de')} kcal</span><span>${cfg.calories.goal.toLocaleString('de')} kcal</span></div></div>
+      <div class="prog">
+        <div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
+        <div class="plbl">
+          <span>${chkCals.toLocaleString('de')} kcal</span>
+          <span>${goal.toLocaleString('de')} kcal</span>
+        </div>
+      </div>
       <div class="mlist">${html||'<div class="empty">Keine Einträge für heute.</div>'}</div>
-      <button class="btn gy full" style="margin-top:12px" onclick="openCheat(${idx})">+ Ungeplantes Essen</button>
+      <button class="btn gy full" style="margin-top:12px; background:rgba(255,255,255,0.03)" onclick="openCheat(${idx})">+ Ungeplantes Essen</button>
     </div>`;
   return w;
 }
