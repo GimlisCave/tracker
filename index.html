@@ -105,14 +105,27 @@
 
 <!-- ══ MEALS ══ -->
 <div class="ov" id="ov-meals">
-  <div class="ovhdr"><button class="back" onclick="backSub('ov-meals')">‹</button><h2>🥗 Mahlzeiten & Tabletten</h2></div>
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-meals')">‹</button><h2>🥗 Mahlzeiten</h2></div>
   <div class="mscroll">
+    <section>
+      <h3>Kalorienziel</h3>
+      <div class="frow"><label>Tagesziel (kcal)</label><input class="fi num" type="number" id="s-cal-goal" min="500" max="10000" step="100" oninput="onCalC()" style="width:110px"></div>
+    </section>
     <section><h3>Bestehende Einträge</h3><div class="cfg-list" id="ml-list"></div></section>
     <section>
       <h3>Eintrag hinzufügen</h3>
       <div class="aform">
         <div class="arow"><span id="nml-ico" class="itap" onclick="openIP('nml')">🥗</span><input class="fi flex" type="text" id="nml-name" placeholder="Name..."></div>
-        <div class="arow"><input class="fi tim" type="time" id="nml-time"><input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..."></div>
+        <div class="arow">
+          <select class="fi flex" id="nml-type">
+            <option value="Frühstück">Frühstück</option>
+            <option value="Mittagessen">Mittagessen</option>
+            <option value="Abendessen">Abendessen</option>
+            <option value="Snack">Snack</option>
+          </select>
+          <input class="fi num" type="number" id="nml-cals" placeholder="kcal" min="0">
+        </div>
+        <div class="arow"><input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..."></div>
         <select class="fi full" id="nml-grp"></select>
         <button class="btn pk full" onclick="addMl()">+ Hinzufügen</button>
       </div>
@@ -471,43 +484,58 @@ function patchFitness(log,idx){
 
 // MEALS
 function mkMeals(log,meals,idx){
-  const s=[...meals].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  const chk=s.filter(m=>log.md[m.id]).length;
-  const pct=meals.length?Math.round(chk/meals.length*100):0;
+  if(!cfg.calories)cfg.calories={goal:2000};
+  let chkCals=0;
+  meals.forEach(m=>{if(log.md[m.id])chkCals+=(m.cals||0);});
+  const pct=Math.min(100,Math.round(chkCals/cfg.calories.goal*100));
+  const order=['Frühstück','Mittagessen','Abendessen','Snack'];
+  const grouped={};
+  order.forEach(o=>grouped[o]=[]);
+  meals.forEach(m=>{
+    const t=m.type||'Snack';
+    if(!grouped[t])grouped[t]=[];
+    grouped[t].push(m);
+  });
   let html='';
-  s.forEach(m=>{
-    const on=!!log.md[m.id];
-    const g=m.groupId?cfg.groups.find(g=>g.id===m.groupId):null;
-    html+=`<div class="mitem">
-      <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
-      <div class="minf">
-        <div class="mtim">${m.time||'–'}${g?` · <span style="color:${g.color}">${g.name}</span>`:''}</div>
-        <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
-        ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
-      </div></div>`;
+  order.forEach(t=>{
+    if(!grouped[t]||!grouped[t].length)return;
+    html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
+    grouped[t].forEach(m=>{
+      const on=!!log.md[m.id];
+      const g=m.groupId?cfg.groups.find(g=>g.id===m.groupId):null;
+      html+=`<div class="mitem">
+        <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
+        <div class="minf">
+          <div class="mtim">${m.cals||0} kcal${g?` · <span style="color:${g.color}">${g.name}</span>`:''}</div>
+          <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
+          ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+        </div></div>`;
+    });
   });
   const w=document.createElement('div');
   w.className='widget open'+(pct>=100?' done':'');w.id='wm-'+idx;w.dataset.o=2;
   w.innerHTML=`<div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wm-${idx}',${idx})">
       <div class="wico wm">🥗</div>
-      <div class="wtit"><b>Mahlzeiten & Tabletten</b><small>${chk}/${meals.length} erledigt</small></div>
+      <div class="wtit"><b>Mahlzeiten</b><small>${chkCals} / ${cfg.calories.goal} kcal · ${pct}%</small></div>
       <div class="wchev">▾</div></div>
     <div class="wbody">
       <div class="prog"><div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
-        <div class="plbl"><span>${chk} erledigt</span><span>${meals.length} gesamt</span></div></div>
+        <div class="plbl"><span>${chkCals} kcal</span><span>${cfg.calories.goal} kcal</span></div></div>
       <div class="mlist">${html||'<div class="empty">Keine Einträge für heute.</div>'}</div></div>`;
   return w;
 }
 function tglM(id,idx){
   const log=glog(idx);log.md[id]=!log.md[id];saveLogs();
   const dml=forDayIdx(cfg.meals,idx);
-  const chk=dml.filter(m=>log.md[m.id]).length;
-  const pct=dml.length?Math.round(chk/dml.length*100):0;
+  let chkCals=0;
+  if(!cfg.calories)cfg.calories={goal:2000};
+  dml.forEach(m=>{if(log.md[m.id])chkCals+=(m.cals||0);});
+  const pct=Math.min(100,Math.round(chkCals/cfg.calories.goal*100));
   const wm=document.getElementById('wm-'+idx);if(!wm)return;
-  wm.querySelector('.wtit small').textContent=`${chk}/${dml.length} erledigt`;
+  wm.querySelector('.wtit small').textContent=`${chkCals} / ${cfg.calories.goal} kcal · ${pct}%`;
   const pf=wm.querySelector('.pfill.m');if(pf)pf.style.width=pct+'%';
-  wm.querySelector('.plbl').children[0].textContent=chk+' erledigt';
+  wm.querySelector('.plbl').children[0].textContent=chkCals+' kcal';
   wm.classList.toggle('done',pct>=100);
   wm.querySelectorAll('.mitem').forEach(item=>{
     const chkEl=item.querySelector('.mchk');if(!chkEl)return;
@@ -519,7 +547,6 @@ function tglM(id,idx){
     if(nm)nm.style.cssText=on?'text-decoration:line-through;opacity:.5':'';
   });
 }
-
 function twid(id,idx){
   const el=document.getElementById(id);if(!el)return;
   el.classList.toggle('open');
@@ -652,7 +679,7 @@ function renderCal(){
     const e=document.createElement('div');e.className='cal-day empty';grid.appendChild(e);
   }
   const todayNorm=new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate());
-for(let d=1;d<=daysInMonth;d++){
+  for(let d=1;d<=daysInMonth;d++){
     const date=new Date(calViewYear,calViewMonth,d);
     const k=date.toISOString().split('T')[0];
     const isFuture=date>todayNorm;
@@ -664,11 +691,18 @@ for(let d=1;d<=daysInMonth;d++){
     if(matchIdx>=0&&matchIdx===activeIdx)el.classList.add('selected');
     const cdn=document.createElement('div');cdn.className='cdn';cdn.textContent=d;el.appendChild(cdn);
     if(log&&!isFuture){
-      // compute % per category
+      const dow=JS2D[date.getDay()];
+      const dayExs=forDow(cfg.exercises,dow);
+      const dayMls=forDow(cfg.meals,dow);
       const wPct=()=>{const f=log.wf?log.wf.filter(Boolean).length:0;const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);return ng?Math.min(100,Math.round(f/ng*100)):0;};
       const sPct=()=>{const sc=log.sc||0;return cfg.steps.goal?Math.min(100,Math.round(sc/cfg.steps.goal*100)):0;};
-      const fPct=()=>{let tot=0,done=0;cfg.exercises.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});return tot?Math.round(done/tot*100):0;};
-      const mPct=()=>{const t=cfg.meals.length;if(!t)return 0;const c=cfg.meals.filter(m=>log.md&&log.md[m.id]).length;return Math.round(c/t*100);};
+      const fPct=()=>{let tot=0,done=0;dayExs.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});return tot?Math.round(done/tot*100):0;};
+      const mPct=()=>{
+        if(!cfg.calories)cfg.calories={goal:2000};
+        let c=0;
+        dayMls.forEach(m=>{if(log.md&&log.md[m.id])c+=(m.cals||0);});
+        return cfg.calories.goal?Math.min(100,Math.round(c/cfg.calories.goal*100)):0;
+      };
       const bars=[
         {p:wPct(),c:'var(--accent2)'},
         {p:sPct(),c:'var(--accent)'},
@@ -694,13 +728,13 @@ for(let d=1;d<=daysInMonth;d++){
       };
     }
     grid.appendChild(el);
-  }  document.getElementById('cal-legend').innerHTML=`
+  }
+  document.getElementById('cal-legend').innerHTML=`
     <div class="cl-item"><div class="cl-dot" style="background:var(--accent2)"></div>Wasser</div>
     <div class="cl-item"><div class="cl-dot" style="background:var(--accent)"></div>Schritte</div>
     <div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Fitness</div>
     <div class="cl-item"><div class="cl-dot" style="background:var(--accent3)"></div>Mahlzeiten</div>`;
 }
-
 // ══ PANELS ══
 function openMenu(){document.getElementById('ov-menu').classList.add('open');}
 function closeMenu(){document.getElementById('ov-menu').classList.remove('open');renderAllWidgets();}
@@ -826,7 +860,16 @@ function delEx(i){cfg.exercises.splice(i,1);saveCfg();renderExList();}
 function updExGrp(i,v){cfg.exercises[i].groupId=v||null;saveCfg();}
 
 // MEALS PANEL
-function initMls(){renderMlList();buildGSel('nml-grp');document.getElementById('nml-ico').textContent=pendIco.nml;}
+function initMls(){
+  if(!cfg.calories)cfg.calories={goal:2000};
+  document.getElementById('s-cal-goal').value=cfg.calories.goal;
+  renderMlList();buildGSel('nml-grp');document.getElementById('nml-ico').textContent=pendIco.nml;
+}
+function onCalC(){
+  if(!cfg.calories)cfg.calories={goal:2000};
+  cfg.calories.goal=parseInt(document.getElementById('s-cal-goal').value)||2000;
+  saveCfg();
+}
 function renderMlList(){
   const el=document.getElementById('ml-list');if(!el)return;
   if(!cfg.meals.length){el.innerHTML='<div class="empty">Noch keine Einträge.</div>';return;}
@@ -834,7 +877,8 @@ function renderMlList(){
     <div class="crow">
       <div class="ctop">
         <span class="cico" onclick="openIP('ml_${i}')">${m.icon||'🥗'}</span>
-        <span class="cname">${m.time?m.time+' · ':''}${m.name}</span>
+        <span class="cname">${m.type||'Snack'} · ${m.name}</span>
+        <span style="font-size:11px;color:var(--muted)">${m.cals||0} kcal</span>
         <span class="cdel" onclick="delMl(${i})">🗑</span>
       </div>
       <div class="cmeta">
@@ -847,12 +891,13 @@ function renderMlList(){
 }
 function addMl(){
   const name=document.getElementById('nml-name').value.trim();
-  const time=document.getElementById('nml-time').value;
+  const type=document.getElementById('nml-type').value;
+  const cals=parseInt(document.getElementById('nml-cals').value)||0;
   const desc=document.getElementById('nml-desc').value.trim();
   const groupId=document.getElementById('nml-grp').value||null;
   if(!name){showToast('⚠️ Name fehlt');return;}
-  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,time,name,desc,groupId});saveCfg();
-  document.getElementById('nml-name').value='';document.getElementById('nml-time').value='';document.getElementById('nml-desc').value='';
+  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,type,cals,name,desc,groupId});saveCfg();
+  document.getElementById('nml-name').value='';document.getElementById('nml-cals').value='';document.getElementById('nml-desc').value='';
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();showToast('🥗 Eintrag hinzugefügt');
 }
