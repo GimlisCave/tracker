@@ -116,20 +116,36 @@
       <h3>Eintrag hinzufügen</h3>
       <div class="aform">
         <div class="arow"><span id="nml-ico" class="itap" onclick="openIP('nml')">🥗</span><input class="fi flex" type="text" id="nml-name" placeholder="Name..."></div>
-        <div class="arow">
-          <select class="fi flex" id="nml-type">
-            <option value="Frühstück">Frühstück</option>
-            <option value="Mittagessen">Mittagessen</option>
-            <option value="Abendessen">Abendessen</option>
-            <option value="Snack">Snack</option>
-          </select>
-          <input class="fi num" type="number" id="nml-cals" placeholder="kcal" min="0">
+        <div class="dchips" id="nml-types">
+          <div class="dchip on" data-t="Frühstück">Frühstück</div>
+          <div class="dchip" data-t="Mittagessen">Mittagessen</div>
+          <div class="dchip" data-t="Abendessen">Abendessen</div>
+          <div class="dchip" data-t="Snack">Snack</div>
         </div>
-        <div class="arow"><input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..."></div>
-        <select class="fi full" id="nml-grp"></select>
+        <div class="arow">
+          <input class="fi num" type="number" id="nml-cals" placeholder="kcal" min="0" style="flex:1">
+          <input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..." style="flex:2">
+        </div>
         <button class="btn pk full" onclick="addMl()">+ Hinzufügen</button>
       </div>
     </section>
+  </div>
+</div>
+
+<div class="ov" id="ov-cheat">
+  <div class="ovhdr"><h2>🍩 Cheat Meal</h2><button class="back" onclick="closeCheat()">✕</button></div>
+  <div class="mscroll">
+    <div class="aform">
+      <div class="arow"><span id="ch-ico" class="itap" onclick="openIP('ch')">🍩</span><input class="fi flex" type="text" id="ch-name" placeholder="Was gab's?"></div>
+      <div class="arow"><input class="fi num" type="number" id="ch-cals" placeholder="kcal" min="0" style="flex:1"></div>
+      <select class="fi full" id="ch-type">
+        <option value="Snack">Snack</option>
+        <option value="Frühstück">Frühstück</option>
+        <option value="Mittagessen">Mittagessen</option>
+        <option value="Abendessen">Abendessen</option>
+      </select>
+      <button class="btn pk full" onclick="saveCheat()">+ Eintragen</button>
+    </div>
   </div>
 </div>
 
@@ -187,14 +203,50 @@ const TODAY_KEY=toKey(NOW);
 let cfg={water:{goalMl:2000,glassMl:250,icon:'🥤'},steps:{goal:10000},groups:[],exercises:[],meals:[]};
 let logs={};
 let sortMode='default';
-let pendIco={glass:'🥤',nex:'🏋️',nml:'🥗'};
 let ipt=null;
 
 // Rolling 7-day window starting today
 let DAYS=[];
 let activeIdx=0; // 0 = today
 let calViewYear,calViewMonth;
+let pendIco={glass:'🥤',nex:'🏋️',nml:'🥗',ch:'🍩'};
+let cheatIdx=0;
 
+function openCheat(idx){
+  cheatIdx=idx;
+  pendIco.ch='🍩';
+  document.getElementById('ch-ico').textContent='🍩';
+  document.getElementById('ch-name').value='';
+  document.getElementById('ch-cals').value='';
+  document.getElementById('ov-cheat').classList.add('open');
+}
+
+function closeCheat(){
+  document.getElementById('ov-cheat').classList.remove('open');
+}
+
+function saveCheat(){
+  const name=document.getElementById('ch-name').value.trim();
+  const cals=parseInt(document.getElementById('ch-cals').value)||0;
+  const type=document.getElementById('ch-type').value;
+  if(!name){showToast('⚠️ Name fehlt');return;}
+  const log=glog(cheatIdx);
+  if(!log.cm)log.cm=[];
+  log.cm.push({id:'c'+Date.now(),icon:pendIco.ch,name,cals,type});
+  saveLogs();
+  closeCheat();
+  renderWidgetsFor(cheatIdx);
+  showToast('🍩 Cheat Meal eingetragen!');
+}
+
+function delCheat(id,idx){
+  const log=glog(idx);
+  if(log.cm){
+    log.cm=log.cm.filter(c=>c.id!==id);
+    saveLogs();
+    renderWidgetsFor(idx);
+  }
+}
 function toKey(d){return d.toISOString().split('T')[0];}
 
 function buildDays(){
@@ -339,10 +391,9 @@ function renderWidgetsFor(idx){
   if(log.wf.length>ng)log.wf.length=ng;
   c.appendChild(mkSteps(log,idx));
   c.appendChild(mkWater(log,ng,idx));
-  const dex=forDayIdx(cfg.exercises,idx);
+  const dex=cfg.exercises;
   if(dex.length)c.appendChild(mkFitness(log,dex,idx));
-  const dml=forDayIdx(cfg.meals,idx);
-  if(dml.length)c.appendChild(mkMeals(log,dml,idx));
+  if(cfg.meals.length||(log.cm&&log.cm.length))c.appendChild(mkMeals(log,cfg.meals,idx));
   const openIds=log.open.length?log.open:['ws-'+idx,'ww-'+idx,'wf-'+idx,'wm-'+idx];
   c.querySelectorAll('.widget').forEach(w=>w.classList.toggle('open',openIds.includes(w.id)));
   applySort(idx);initDrag(log,idx);
@@ -485,31 +536,48 @@ function patchFitness(log,idx){
 // MEALS
 function mkMeals(log,meals,idx){
   if(!cfg.calories)cfg.calories={goal:2000};
+  if(!log.cm)log.cm=[];
   let chkCals=0;
   meals.forEach(m=>{if(log.md[m.id])chkCals+=(m.cals||0);});
+  log.cm.forEach(c=>{chkCals+=(c.cals||0);});
   const pct=Math.min(100,Math.round(chkCals/cfg.calories.goal*100));
   const order=['Frühstück','Mittagessen','Abendessen','Snack'];
   const grouped={};
   order.forEach(o=>grouped[o]=[]);
   meals.forEach(m=>{
-    const t=m.type||'Snack';
+    const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
+    ts.forEach(t=>{
+      if(!grouped[t])grouped[t]=[];
+      grouped[t].push({...m,isCheat:false});
+    });
+  });
+  log.cm.forEach(c=>{
+    const t=c.type||'Snack';
     if(!grouped[t])grouped[t]=[];
-    grouped[t].push(m);
+    grouped[t].push({...c,isCheat:true});
   });
   let html='';
   order.forEach(t=>{
     if(!grouped[t]||!grouped[t].length)return;
     html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
     grouped[t].forEach(m=>{
-      const on=!!log.md[m.id];
-      const g=m.groupId?cfg.groups.find(g=>g.id===m.groupId):null;
-      html+=`<div class="mitem">
-        <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
-        <div class="minf">
-          <div class="mtim">${m.cals||0} kcal${g?` · <span style="color:${g.color}">${g.name}</span>`:''}</div>
-          <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
-          ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
-        </div></div>`;
+      if(m.isCheat){
+        html+=`<div class="mitem">
+          <div class="mchk on" onclick="delCheat('${m.id}',${idx})" style="background:var(--border);border-color:var(--muted)">🗑</div>
+          <div class="minf">
+            <div class="mtim" style="color:var(--accent3)">${m.cals||0} kcal</div>
+            <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
+          </div></div>`;
+      }else{
+        const on=!!log.md[m.id];
+        html+=`<div class="mitem">
+          <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
+          <div class="minf">
+            <div class="mtim">${m.cals||0} kcal</div>
+            <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
+            ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+          </div></div>`;
+      }
     });
   });
   const w=document.createElement('div');
@@ -517,35 +585,20 @@ function mkMeals(log,meals,idx){
   w.innerHTML=`<div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wm-${idx}',${idx})">
       <div class="wico wm">🥗</div>
-      <div class="wtit"><b>Mahlzeiten</b><small>${chkCals} / ${cfg.calories.goal} kcal · ${pct}%</small></div>
+      <div class="wtit"><b>Mahlzeiten</b><small>${chkCals.toLocaleString('de')} / ${cfg.calories.goal.toLocaleString('de')} kcal · ${pct}%</small></div>
       <div class="wchev">▾</div></div>
     <div class="wbody">
       <div class="prog"><div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
-        <div class="plbl"><span>${chkCals} kcal</span><span>${cfg.calories.goal} kcal</span></div></div>
-      <div class="mlist">${html||'<div class="empty">Keine Einträge für heute.</div>'}</div></div>`;
+        <div class="plbl"><span>${chkCals.toLocaleString('de')} kcal</span><span>${cfg.calories.goal.toLocaleString('de')} kcal</span></div></div>
+      <div class="mlist">${html||'<div class="empty">Keine Einträge für heute.</div>'}</div>
+      <button class="btn gy full" style="margin-top:12px" onclick="openCheat(${idx})">+ Ungeplantes Essen</button>
+    </div>`;
   return w;
 }
+
 function tglM(id,idx){
   const log=glog(idx);log.md[id]=!log.md[id];saveLogs();
-  const dml=forDayIdx(cfg.meals,idx);
-  let chkCals=0;
-  if(!cfg.calories)cfg.calories={goal:2000};
-  dml.forEach(m=>{if(log.md[m.id])chkCals+=(m.cals||0);});
-  const pct=Math.min(100,Math.round(chkCals/cfg.calories.goal*100));
-  const wm=document.getElementById('wm-'+idx);if(!wm)return;
-  wm.querySelector('.wtit small').textContent=`${chkCals} / ${cfg.calories.goal} kcal · ${pct}%`;
-  const pf=wm.querySelector('.pfill.m');if(pf)pf.style.width=pct+'%';
-  wm.querySelector('.plbl').children[0].textContent=chkCals+' kcal';
-  wm.classList.toggle('done',pct>=100);
-  wm.querySelectorAll('.mitem').forEach(item=>{
-    const chkEl=item.querySelector('.mchk');if(!chkEl)return;
-    const fn=chkEl.getAttribute('onclick')||'';
-    const mid=fn.match(/'([^']+)'/)?.[1];if(!mid)return;
-    const on=!!log.md[mid];
-    chkEl.classList.toggle('on',on);chkEl.textContent=on?'✓':'';
-    const nm=item.querySelector('.mnam');
-    if(nm)nm.style.cssText=on?'text-decoration:line-through;opacity:.5':'';
-  });
+  renderWidgetsFor(idx);
 }
 function twid(id,idx){
   const el=document.getElementById(id);if(!el)return;
@@ -691,16 +744,15 @@ function renderCal(){
     if(matchIdx>=0&&matchIdx===activeIdx)el.classList.add('selected');
     const cdn=document.createElement('div');cdn.className='cdn';cdn.textContent=d;el.appendChild(cdn);
     if(log&&!isFuture){
-      const dow=JS2D[date.getDay()];
-      const dayExs=forDow(cfg.exercises,dow);
-      const dayMls=forDow(cfg.meals,dow);
+      const dayExs=cfg.exercises;
       const wPct=()=>{const f=log.wf?log.wf.filter(Boolean).length:0;const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);return ng?Math.min(100,Math.round(f/ng*100)):0;};
       const sPct=()=>{const sc=log.sc||0;return cfg.steps.goal?Math.min(100,Math.round(sc/cfg.steps.goal*100)):0;};
       const fPct=()=>{let tot=0,done=0;dayExs.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});return tot?Math.round(done/tot*100):0;};
       const mPct=()=>{
         if(!cfg.calories)cfg.calories={goal:2000};
         let c=0;
-        dayMls.forEach(m=>{if(log.md&&log.md[m.id])c+=(m.cals||0);});
+        cfg.meals.forEach(m=>{if(log.md&&log.md[m.id])c+=(m.cals||0);});
+        if(log.cm)log.cm.forEach(ch=>{c+=(ch.cals||0);});
         return cfg.calories.goal?Math.min(100,Math.round(c/cfg.calories.goal*100)):0;
       };
       const bars=[
@@ -735,6 +787,7 @@ function renderCal(){
     <div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Fitness</div>
     <div class="cl-item"><div class="cl-dot" style="background:var(--accent3)"></div>Mahlzeiten</div>`;
 }
+
 // ══ PANELS ══
 function openMenu(){document.getElementById('ov-menu').classList.add('open');}
 function closeMenu(){document.getElementById('ov-menu').classList.remove('open');renderAllWidgets();}
@@ -863,7 +916,12 @@ function updExGrp(i,v){cfg.exercises[i].groupId=v||null;saveCfg();}
 function initMls(){
   if(!cfg.calories)cfg.calories={goal:2000};
   document.getElementById('s-cal-goal').value=cfg.calories.goal;
-  renderMlList();buildGSel('nml-grp');document.getElementById('nml-ico').textContent=pendIco.nml;
+  renderMlList();
+  document.getElementById('nml-ico').textContent=pendIco.nml;
+  const types=document.querySelectorAll('#nml-types .dchip');
+  types.forEach(c=>{
+    c.onclick=()=>c.classList.toggle('on');
+  });
 }
 function onCalC(){
   if(!cfg.calories)cfg.calories={goal:2000};
@@ -873,31 +931,31 @@ function onCalC(){
 function renderMlList(){
   const el=document.getElementById('ml-list');if(!el)return;
   if(!cfg.meals.length){el.innerHTML='<div class="empty">Noch keine Einträge.</div>';return;}
-  el.innerHTML=cfg.meals.map((m,i)=>`
+  el.innerHTML=cfg.meals.map((m,i)=>{
+    const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
+    return `
     <div class="crow">
       <div class="ctop">
         <span class="cico" onclick="openIP('ml_${i}')">${m.icon||'🥗'}</span>
-        <span class="cname">${m.type||'Snack'} · ${m.name}</span>
+        <span class="cname">${ts.join(', ')} · ${m.name}</span>
         <span style="font-size:11px;color:var(--muted)">${m.cals||0} kcal</span>
         <span class="cdel" onclick="delMl(${i})">🗑</span>
       </div>
-      <div class="cmeta">
-        <select class="csel" onchange="updMlGrp(${i},this.value)">
-          <option value="">Keine Gruppe</option>
-          ${cfg.groups.map(g=>`<option value="${g.id}" ${m.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
-        </select>
-      </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 function addMl(){
   const name=document.getElementById('nml-name').value.trim();
-  const type=document.getElementById('nml-type').value;
+  const types=[...document.querySelectorAll('#nml-types .dchip.on')].map(c=>c.dataset.t);
   const cals=parseInt(document.getElementById('nml-cals').value)||0;
   const desc=document.getElementById('nml-desc').value.trim();
-  const groupId=document.getElementById('nml-grp').value||null;
   if(!name){showToast('⚠️ Name fehlt');return;}
-  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,type,cals,name,desc,groupId});saveCfg();
-  document.getElementById('nml-name').value='';document.getElementById('nml-cals').value='';document.getElementById('nml-desc').value='';
+  if(!types.length){showToast('⚠️ Typ wählen');return;}
+  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc});
+  saveCfg();
+  document.getElementById('nml-name').value='';
+  document.getElementById('nml-cals').value='';
+  document.getElementById('nml-desc').value='';
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();showToast('🥗 Eintrag hinzugefügt');
 }
@@ -917,6 +975,7 @@ function pickIC(ic){
   if(ipt==='glass'){cfg.water.icon=ic;document.getElementById('s-gico').textContent=ic;saveCfg();}
   else if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
   else if(ipt==='nml'){pendIco.nml=ic;document.getElementById('nml-ico').textContent=ic;}
+  else if(ipt==='ch'){pendIco.ch=ic;document.getElementById('ch-ico').textContent=ic;}
   else if(ipt.startsWith('ex_')){const i=+ipt.split('_')[1];cfg.exercises[i].icon=ic;saveCfg();renderExList();}
   else if(ipt.startsWith('ml_')){const i=+ipt.split('_')[1];cfg.meals[i].icon=ic;saveCfg();renderMlList();}
   closeIP();
