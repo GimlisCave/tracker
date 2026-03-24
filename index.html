@@ -720,8 +720,7 @@ function mkMeals(log, meals, key) {
               <div class="mnam">${m.icon || '🍩'} ${m.name}</div>
               ${m.desc ? `<div class="mdsc">${m.desc}</div>` : ''}
             </div>
-            <div style="font-size:12px; color:var(--muted); margin-right:8px;">🗑</div>
-          </div>`;
+            </div>`;
       } else {
         // HIER: Der Key ist jetzt "ID_TYP" (z.B. "m123_Frühstück")
         const itemKey = m.id + '_' + m.currentType;
