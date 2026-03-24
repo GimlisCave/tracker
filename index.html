@@ -137,7 +137,10 @@
   <div class="mscroll">
     <div class="aform">
       <div class="arow"><span id="ch-ico" class="itap" onclick="openIP('ch')">🍩</span><input class="fi flex" type="text" id="ch-name" placeholder="Was gab's?"></div>
-      <div class="arow"><input class="fi num" type="number" id="ch-cals" placeholder="kcal" min="0" style="flex:1"></div>
+      <div class="arow">
+        <input class="fi num" type="number" id="ch-cals" placeholder="kcal" min="0" style="flex:1">
+        <input class="fi flex" type="text" id="ch-desc" placeholder="Details (optional)..." style="flex:2">
+      </div>
       <select class="fi full" id="ch-type">
         <option value="Snack">Snack</option>
         <option value="Frühstück">Frühstück</option>
@@ -218,6 +221,7 @@ function openCheat(idx){
   document.getElementById('ch-ico').textContent='🍩';
   document.getElementById('ch-name').value='';
   document.getElementById('ch-cals').value='';
+  document.getElementById('ch-desc').value='';
   document.getElementById('ov-cheat').classList.add('open');
 }
 
@@ -228,11 +232,12 @@ function closeCheat(){
 function saveCheat(){
   const name=document.getElementById('ch-name').value.trim();
   const cals=parseInt(document.getElementById('ch-cals').value)||0;
+  const desc=document.getElementById('ch-desc').value.trim();
   const type=document.getElementById('ch-type').value;
   if(!name){showToast('⚠️ Name fehlt');return;}
   const log=glog(cheatIdx);
   if(!log.cm)log.cm=[];
-  log.cm.push({id:'c'+Date.now(),icon:pendIco.ch,name,cals,type});
+  log.cm.push({id:'c'+Date.now(),icon:pendIco.ch,name,cals,desc,type});
   saveLogs();
   closeCheat();
   renderWidgetsFor(cheatIdx);
@@ -563,16 +568,14 @@ function mkMeals(log,meals,idx){
     html+=`<div style="font-size:11px;color:var(--muted);margin:8px 0 4px;font-weight:600;text-transform:uppercase">${t}</div>`;
     grouped[t].forEach(m=>{
       if(m.isCheat){
-        // --- DAS HIER IST DER LÖSCH-BUTTON FÜR CHEAT MEALS ---
-        // Er ersetzt das Häkchen-Feld durch einen Mülleimer (🗑) und ruft delCheat() auf.
         html+=`<div class="mitem">
           <div class="mchk on" onclick="delCheat('${m.id}',${idx})" style="background:var(--border);border-color:var(--muted)">🗑</div>
           <div class="minf">
             <div class="mtim" style="color:var(--accent3)">${m.cals||0} kcal</div>
             <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
+            ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
           </div></div>`;
       }else{
-        // Reguläre Mahlzeit mit Häkchen
         const on=!!log.md[m.id];
         html+=`<div class="mitem">
           <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}',${idx})">${on?'✓':''}</div>
