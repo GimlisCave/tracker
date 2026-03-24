@@ -438,7 +438,7 @@ function buildPage(cid, d){
   wlist.appendChild(mkWater(log,ng,key));
   if(cfg.exercises.length) wlist.appendChild(mkFitness(log,cfg.exercises,key));
   if(cfg.meals.length||(log.cm&&log.cm.length)) wlist.appendChild(mkMeals(log,cfg.meals,key));
-  
+  wlist.appendChild(mkWeight(log, key));
   c.appendChild(wlist);
   
   const openIds=log.open.length?log.open:['ws-'+key,'ww-'+key,'wf-'+key,'wm-'+key];
@@ -517,7 +517,64 @@ function setSteps(val,key){
 function addSteps(n,key){
   const log=glog(key);log.sc=(log.sc||0)+n;saveLogs();buildPage('page-curr', activeDate);
 }
+function setWeight(val, key) {
+  const log = glog(key);
+  log.wg = parseFloat(val.replace(',', '.')) || 0;
+  saveLogs();
+  // Wir rendern die Seite neu, damit der Vergleichswert überall aktuell ist
+  buildPage('page-curr', activeDate);
+}
 
+function mkWeight(log, key) {
+  const curWeight = log.wg || 0;
+  
+  // Berechnung: Gewicht vor 1 Woche
+  const d = new Date(key);
+  d.setDate(d.getDate() - 7);
+  const oldKey = toKey(d);
+  const oldLog = logs[oldKey];
+  const oldWeight = (oldLog && oldLog.wg) ? oldLog.wg : 0;
+  
+  let diffText = "Kein Vergleich";
+  let diffClass = "";
+  
+  if (curWeight > 0 && oldWeight > 0) {
+    const diff = (curWeight - oldWeight).toFixed(1);
+    if (diff > 0) {
+      diffText = `+${diff} kg`;
+      diffClass = "plus";
+    } else if (diff < 0) {
+      diffText = `${diff} kg`;
+      diffClass = "minus";
+    } else {
+      diffText = "±0 kg";
+    }
+  }
+
+  const w = document.createElement('div');
+  w.className = 'widget open';
+  w.id = 'wg-' + key;
+  w.dataset.o = 3; // Position unter Mahlzeiten
+  
+  w.innerHTML = `
+    <div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('wg-${key}','${key}')">
+      <div class="wico" style="background:rgba(160, 96, 240, 0.2)">⚖️</div>
+      <div class="wtit"><b>Gewicht</b><small>${curWeight > 0 ? curWeight + ' kg' : 'Noch kein Eintrag'}</small></div>
+      <div class="wchev">▾</div>
+    </div>
+    <div class="wbody">
+      <div class="weight-row">
+        <input class="weight-inp" type="number" step="0.1" value="${curWeight || ''}" 
+          placeholder="0.0" oninput="setWeight(this.value, '${key}')" inputmode="decimal">
+        <div class="weight-stats">
+          <div style="margin-bottom:2px">Vor 7 Tagen: ${oldWeight > 0 ? oldWeight + ' kg' : '-'}</div>
+          <div class="weight-diff ${diffClass}">${diffText}</div>
+        </div>
+      </div>
+    </div>`;
+  return w;
+}
 function countDone(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length;}
 function mkFitness(log, exs, key) {
   let tot = 0, done = 0;
