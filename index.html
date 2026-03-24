@@ -530,10 +530,12 @@ function mkFitness(log, exs, key) {
     for (let s = 0; s < ex.sets; s++) {
       const v = vals[s] ?? ''; const isDone = Number(v) > 0;
       sh += `<div class="spill ${isDone ? 'done' : ''}"><span>S${s + 1}:</span>
-        <input type="number" value="${v}" placeholder="0" min="0" max="999"
-          oninput="setRep('${ex.id}',${s},this.value,'${key}')" 
-          style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric">
-        <span>/${ex.maxReps}</span></div>`;
+  <input type="number" value="${v}" placeholder="0" min="0" max="999"
+    oninput="setRep('${ex.id}',${s},this.value,'${key}')"
+    onfocus="if(this.value=='0')this.value=''"
+    onblur="if(this.value=='')this.value='0'"
+    style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric">
+  <span>/${ex.maxReps}</span></div>`;;
     }
     const g = ex.groupId ? cfg.groups.find(g => g.id === ex.groupId) : null;
     html += `<div class="exitem">
@@ -591,21 +593,31 @@ function patchFitness(log,key){
 function mkMeals(log, meals, key) {
   if (!cfg.calories) cfg.calories = { goal: 2000 };
   if (!log.cm) log.cm = [];
+  
+  // Kalorien zählen: Wir prüfen jetzt den kombinierten Key "ID_TYP"
   let chkCals = 0;
-  meals.forEach(m => { if (log.md[m.id]) chkCals += (m.cals || 0); });
+  meals.forEach(m => {
+    const ts = m.types && m.types.length ? m.types : (m.type ? [m.type] : ['Snack']);
+    ts.forEach(t => {
+      if (log.md[m.id + '_' + t]) chkCals += (m.cals || 0);
+    });
+  });
   log.cm.forEach(c => { chkCals += (c.cals || 0); });
+
   const goal = cfg.calories.goal;
   const pct = Math.min(100, Math.round(chkCals / goal * 100));
   const order = ['Frühstück', 'Mittagessen', 'Abendessen', 'Snack'];
   const grouped = {};
   order.forEach(o => grouped[o] = []);
+
   meals.forEach(m => {
     const ts = m.types && m.types.length ? m.types : (m.type ? [m.type] : ['Snack']);
-    ts.forEach(t => { if (grouped[t]) grouped[t].push({ ...m, isCheat: false }); });
+    ts.forEach(t => { if (grouped[t]) grouped[t].push({ ...m, currentType: t, isCheat: false }); });
   });
+  
   log.cm.forEach(c => {
     const t = c.type || 'Snack';
-    if (grouped[t]) grouped[t].push({ ...c, isCheat: true });
+    if (grouped[t]) grouped[t].push({ ...c, currentType: t, isCheat: true });
   });
 
   let html = '';
@@ -623,12 +635,14 @@ function mkMeals(log, meals, key) {
             <div style="font-size:12px; color:var(--muted); margin-right:8px;">🗑</div>
           </div>`;
       } else {
-        const on = !!log.md[m.id];
-        html += `<div class="mitem" onclick="tglM('${m.id}','${key}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom: 4px;">
+        // HIER: Der Key ist jetzt "ID_TYP" (z.B. "m123_Frühstück")
+        const itemKey = m.id + '_' + m.currentType;
+        const on = !!log.md[itemKey];
+        html += `<div class="mitem" onclick="tglM('${itemKey}','${key}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom: 4px;">
             <div class="minf">
               <div class="mtim">${(m.cals || 0).toLocaleString('de')} kcal</div>
               <div class="mnam" style="${on ? 'text-decoration:line-through;opacity:.6' : ''}">${m.icon || ''} ${m.name}</div>
-              ${m.desc ? `<div class="mdsc">${m.desc} : ''}</div>` : ''}
+              ${m.desc ? `<div class="mdsc">${m.desc}</div>` : ''}
             </div>
             <div class="mchk ${on ? 'on' : ''}" style="margin-left:10px; flex-shrink:0;">${on ? '✓' : ''}</div>
           </div>`;
@@ -654,10 +668,13 @@ function mkMeals(log, meals, key) {
   return w;
 }
 
-function tglM(id,key){
-  const log=glog(key);log.md[id]=!log.md[id];saveLogs();
+function tglM(itemKey, key){
+  const log = glog(key);
+  log.md[itemKey] = !log.md[itemKey];
+  saveLogs();
   buildPage('page-curr', activeDate);
 }
+
 function twid(id,key){
   const el=document.getElementById(id);if(!el)return;
   el.classList.toggle('open');
