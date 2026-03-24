@@ -21,7 +21,6 @@
   </div>
   <div class="hdr-r">
     <div class="ibtn" onclick="openCal()">📅</div>
-    <div class="ibtn" onclick="resetDay()">🔄</div>
     <div class="ibtn" onclick="openMenu()">⚙️</div>
   </div>
 </div>
@@ -726,72 +725,7 @@ function initDrag(log,key){
     document.removeEventListener('touchend',en);document.removeEventListener('mouseup',en);
   }
 }
-function resetDay(key) {
-  if (!confirm('Möchtest du wirklich alle Daten für diesen Tag löschen?')) return;
-  delete logs[key];
-  save();
-  
-  // Kalender-Kachel visuell zurücksetzen
-  const el = document.querySelector(`.cal-day[onclick*="'${key}'"]`);
-  if (el) {
-    el.classList.remove('all-done', 'has-data');
-    const stats = el.querySelector('.cal-day-stats');
-    if (stats) stats.remove();
-  }
 
-  // Falls es der aktuell angezeigte Tag ist, Ansicht neu laden
-  if (key === curKey) renderDay(key);
-}
-function save() {
-  localStorage.setItem('fitness_logs', JSON.stringify(logs));
-  localStorage.setItem('fitness_cfg', JSON.stringify(cfg));
-  if (typeof curKey !== 'undefined') updateCalStatus(curKey);
-}
-function updateCalStatus(key) {
-  const log = logs[key];
-  const el = document.querySelector(`.cal-day[onclick*="'${key}'"]`);
-  if (!el) return;
-
-  if (!log) {
-    el.classList.remove('all-done', 'has-data');
-    const stats = el.querySelector('.cal-day-stats');
-    if (stats) stats.remove();
-    return;
-  }
-
-  const wPct = () => {
-    const f = log.wf ? log.wf.filter(Boolean).length : 0;
-    const ng = Math.ceil(cfg.water.goalMl / cfg.water.glassMl);
-    return ng ? Math.min(100, Math.round(f / ng * 100)) : 0;
-  };
-  const sPct = () => {
-    const sc = log.sc || 0;
-    return cfg.steps.goal ? Math.min(100, Math.round(sc / cfg.steps.goal * 100)) : 0;
-  };
-  const fPct = () => {
-    let tot = 0, done = 0;
-    cfg.exercises.forEach(ex => {
-      tot += ex.sets;
-      if (log.ed && log.ed[ex.id]) {
-        done += log.ed[ex.id].filter(v => Number(v) > 0).length;
-      }
-    });
-    return tot ? Math.min(100, Math.round(done / tot * 100)) : 0;
-  };
-  const mPct = () => {
-    let c = 0;
-    cfg.meals.forEach(m => { if (log.md && log.md[m.id]) c += (m.cals || 0); });
-    if (log.cm) log.cm.forEach(ch => { c += (ch.cals || 0); });
-    return cfg.calories.goal ? Math.min(100, Math.round(c / cfg.calories.goal * 100)) : 0;
-  };
-
-  const wp = wPct(), sp = sPct(), fp = fPct(), mp = mPct();
-  const hasExs = cfg.exercises.length > 0;
-  const hasMls = cfg.meals.length > 0;
-
-  const isAllDone = wp >= 100 && sp >= 100 && (!hasExs || fp >= 100) && (!hasMls || mp >= 100);
-  el.classList.toggle('all-done', isAllDone);
-}
 function exportData(){
   const blob=new Blob([JSON.stringify({cfg,logs},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
