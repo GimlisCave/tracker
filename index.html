@@ -418,7 +418,7 @@ function mkFitness(log,exs,idx){
     for(let s=0;s<ex.sets;s++){
       const v=vals[s]??'';const isDone=Number(v)>0;
       sh+=`<div class="spill ${isDone?'done':''}"><span>S${s+1}:</span>
-        <input type="number" value="${v}" placeholder="${ex.maxReps}" min="0"
+        <input type="number" value="${v}" placeholder="0" min="0"
           oninput="setRep('${ex.id}',${s},this.value,${idx})" style="color:inherit">
         <span>/${ex.maxReps}</span></div>`;
     }
@@ -444,8 +444,7 @@ function mkFitness(log,exs,idx){
         <div class="plbl"><span>${done} erledigt</span><span>${tot} Sätze</span></div></div>
       <div class="exlist">${html||'<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
   return w;
-}
-function setRep(exId,si,val,idx){
+}function setRep(exId,si,val,idx){
   const log=glog(idx);
   if(!log.ed[exId])log.ed[exId]=[];
   log.ed[exId][si]=val;saveLogs();patchFitness(log,idx);
