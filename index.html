@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Daytracker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-sub" id="hdr-date"></span>
+  </div>
+  <div class="hdr-r">
+    <div class="ibtn" onclick="resetDay()">🔄</div>
+    <div class="ibtn" onclick="openMenu()">⚙️</div>
+  </div>
+</div>
+
+<div class="day-bar" id="day-bar"></div>
+
+<div class="sort-bar">
+  <div class="schip active" onclick="setSort('default',this)">Standard</div>
+  <div class="schip" onclick="setSort('pending',this)">Offen zuerst</div>
+  <div class="schip" onclick="setSort('done',this)">Erledigt zuerst</div>
+</div>
+
+<div class="scroll">
+  <div class="wlist" id="wlist"></div>
+</div>
+
+<div class="bbar">
+  <button class="bbtn" onclick="exportData()">📤 Export</button>
+  <label class="bbtn">📥 Import<input type="file" id="impin" accept=".json" onchange="importData(this)"></label>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ══ MENU ══ -->
+<div class="ov" id="ov-menu">
+  <div class="ovhdr"><h2>⚙️ Einstellungen</h2><button class="back" onclick="closeMenu()">✕</button></div>
+  <div class="mcards">
+    <div class="mcard" onclick="goSub('ov-water')"><div class="mcard-ico">💧</div><div class="mcard-txt"><b>Wasser</b><small>Tagesziel, Glasgröße, Icon</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-groups')"><div class="mcard-ico">🗂</div><div class="mcard-txt"><b>Gruppen</b><small>Wochentage zuweisen</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-ex')"><div class="mcard-ico">🏋️</div><div class="mcard-txt"><b>Übungen</b><small>Sets, Wiederholungen, Gruppe</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-meals')"><div class="mcard-ico">🥗</div><div class="mcard-txt"><b>Mahlzeiten & Tabletten</b><small>Uhrzeit, Beschreibung, Gruppe</small></div><div class="mcard-arr">›</div></div>
+  </div>
+</div>
+
+<!-- ══ WATER ══ -->
+<div class="ov" id="ov-water">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-water')">‹</button><h2>💧 Wasser</h2></div>
+  <div class="mscroll">
+    <section>
+      <h3>Ziel & Glas</h3>
+      <div class="frow"><label>Tagesziel (ml)</label><input class="fi num" type="number" id="s-goal" min="500" max="15000" step="100" oninput="onWC()"></div>
+      <div class="frow"><label>Glasgröße (ml)</label><input class="fi num" type="number" id="s-gml" min="50" max="2000" step="50" oninput="onWC()"></div>
+      <div class="frow"><label>Glas-Icon</label><span id="s-gico" class="itap" onclick="openIP('glass')">🥤</span></div>
+      <div class="wnote" id="wnote">→ 8 Gläser à 250 ml</div>
+    </section>
+  </div>
+</div>
+
+<!-- ══ GROUPS ══ -->
+<div class="ov" id="ov-groups">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-groups')">‹</button><h2>🗂 Gruppen</h2></div>
+  <div class="mscroll">
+    <section><h3>Bestehende Gruppen</h3><div class="cfg-list" id="grp-list"></div></section>
+    <section>
+      <h3>Gruppe hinzufügen</h3>
+      <div class="aform">
+        <div class="arow"><input class="fi flex" type="text" id="ng-name" placeholder="Gruppenname..."><input class="fi" type="color" id="ng-col" value="#c8f060"></div>
+        <div class="dchips" id="ng-days"></div>
+        <button class="btn gr full" onclick="addGroup()">+ Gruppe hinzufügen</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══ EXERCISES ══ -->
+<div class="ov" id="ov-ex">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-ex')">‹</button><h2>🏋️ Übungen</h2></div>
+  <div class="mscroll">
+    <section><h3>Bestehende Übungen</h3><div class="cfg-list" id="ex-list"></div></section>
+    <section>
+      <h3>Übung hinzufügen</h3>
+      <div class="aform">
+        <div class="arow"><span id="nex-ico" class="itap" onclick="openIP('nex')">🏋️</span><input class="fi flex" type="text" id="nex-name" placeholder="Übungsname..."></div>
+        <div class="arow"><input class="fi" type="number" id="nex-sets" placeholder="Sets" min="1" max="20" style="flex:1"><input class="fi" type="number" id="nex-max" placeholder="Max Reps" min="1" max="999" style="flex:1"></div>
+        <select class="fi full" id="nex-grp"></select>
+        <button class="btn gr full" onclick="addEx()">+ Übung hinzufügen</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══ MEALS ══ -->
+<div class="ov" id="ov-meals">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-meals')">‹</button><h2>🥗 Mahlzeiten & Tabletten</h2></div>
+  <div class="mscroll">
+    <section><h3>Bestehende Einträge</h3><div class="cfg-list" id="ml-list"></div></section>
+    <section>
+      <h3>Eintrag hinzufügen</h3>
+      <div class="aform">
+        <div class="arow"><span id="nml-ico" class="itap" onclick="openIP('nml')">🥗</span><input class="fi flex" type="text" id="nml-name" placeholder="Name..."></div>
+        <div class="arow"><input class="fi tim" type="time" id="nml-time"><input class="fi flex" type="text" id="nml-desc" placeholder="Details (optional)..."></div>
+        <select class="fi full" id="nml-grp"></select>
+        <button class="btn pk full" onclick="addMl()">+ Hinzufügen</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══ ICON PICKER ══ -->
+<div class="ipov" id="ipov">
+  <div class="ipbox">
+    <h4>Icon wählen <button onclick="closeIP()">✕</button></h4>
+    <div class="igrid" id="igrid"></div>
+  </div>
+</div>
+
+<script>
+const DS=['Mo','Di','Mi','Do','Fr','Sa','So'];
+const DF=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const JS2D=[6,0,1,2,3,4,5];
+const ICONS=['🏋️','🤸','🚴','🏃','🧘','💪','⚽','🏊','🥊','🎯','🧗','🏸',
+  '🥗','🥣','🍎','🥑','🍌','🥩','🥤','☕','🍵','💊','🌿','🥝','🧃','🍇','🥦','🥛','🍶',
+  '💧','🫗','🫙','🏺','🧴','🫀','🧠','❤️','⭐','✅','📋','💡','🔥','⚡','🌙','☀️','🌅','🧁','🍫'];
+
+const NOW=new Date();
+const TODAY_DOW=JS2D[NOW.getDay()];
+const TODAY_KEY=NOW.toISOString().split('T')[0];
+
+let cfg={water:{goalMl:2000,glassMl:250,icon:'🥤'},groups:[],exercises:[],meals:[]};
+let logs={};
+let activeDay=TODAY_DOW;
+let sortMode='default';
+let pendIco={glass:'🥤',nex:'🏋️',nml:'🥗'};
+let ipt=null; // icon picker target
+
+function saveCfg(){localStorage.setItem('dtc',JSON.stringify(cfg))}
+function saveLogs(){localStorage.setItem('dtl',JSON.stringify(logs))}
+function loadAll(){
+  try{const c=localStorage.getItem('dtc');if(c)cfg={...cfg,...JSON.parse(c)}}catch(e){}
+  try{const l=localStorage.getItem('dtl');if(l)logs=JSON.parse(l)}catch(e){}
+}
+function dkey(dow){const d=new Date(NOW);d.setDate(d.getDate()+(dow-TODAY_DOW));return d.toISOString().split('T')[0]}
+function glog(dow){const k=dkey(dow);if(!logs[k])logs[k]={wf:[],ed:{},md:{},order:[],open:[]};return logs[k]}
+
+document.getElementById('hdr-date').textContent=NOW.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long'});
+
+// ── DAY TABS ──
+function renderTabs(){
+  const b=document.getElementById('day-bar');b.innerHTML='';
+  DS.forEach((d,i)=>{
+    const t=document.createElement('div');
+    t.className='dtab'+(i===activeDay?' active':'')+(i===TODAY_DOW?' today':'');
+    t.textContent=d;t.onclick=()=>{activeDay=i;renderTabs();renderWidgets()};
+    b.appendChild(t);
+  });
+}
+
+// ── WIDGETS ──
+function forDay(arr,dow){
+  return arr.filter(it=>{
+    if(!it.groupId)return true;
+    const g=cfg.groups.find(g=>g.id===it.groupId);
+    return !g||!g.days.length||g.days.includes(dow);
+  });
+}
+
+function renderWidgets(){
+  const c=document.getElementById('wlist');c.innerHTML='';
+  const log=glog(activeDay);
+  const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);
+  while(log.wf.length<ng)log.wf.push(false);
+  if(log.wf.length>ng)log.wf.length=ng;
+
+  c.appendChild(mkWater(log,ng));
+  const dex=forDay(cfg.exercises,activeDay);
+  if(dex.length)c.appendChild(mkFitness(log,dex));
+  const dml=forDay(cfg.meals,activeDay);
+  if(dml.length)c.appendChild(mkMeals(log,dml));
+
+  const openIds=log.open.length?log.open:['ww','wf','wm'];
+  c.querySelectorAll('.widget').forEach(w=>w.classList.toggle('open',openIds.includes(w.id)));
+  applySort();initDrag(log);
+}
+
+// WATER
+function mkWater(log,ng){
+  const f=log.wf.filter(Boolean).length;
+  const ml=f*cfg.water.glassMl;
+  const pct=Math.min(100,Math.round(ml/cfg.water.goalMl*100));
+  const w=document.createElement('div');
+  w.className='widget open'+(pct>=100?' done':'');w.id='ww';w.dataset.o=0;
+  w.innerHTML=`<div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('ww')">
+      <div class="wico wt">${cfg.water.icon}</div>
+      <div class="wtit"><b>Wasser</b><small>${f}/${ng} Gläser · ${pct}%</small></div>
+      <div class="wchev">▾</div></div>
+    <div class="wbody">
+      <div class="prog"><div class="pbar"><div class="pfill w" style="width:${pct}%"></div></div>
+        <div class="plbl"><span>${ml} ml</span><span>${cfg.water.goalMl} ml</span></div></div>
+      <div class="glasses">${log.wf.map((v,i)=>`
+        <div class="gbtn ${v?'on':''}" onclick="tgl(${i})">
+          <span>${v?'🫗':cfg.water.icon}</span><small>${cfg.water.glassMl}ml</small>
+        </div>`).join('')}
+      </div></div>`;
+  return w;
+}
+function tgl(i){const l=glog(activeDay);l.wf[i]=!l.wf[i];saveLogs();renderWidgets()}
+
+// FITNESS
+function countDone(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length}
+function mkFitness(log,exs){
+  let tot=0,done=0;
+  exs.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex)});
+  const pct=tot>0?Math.round(done/tot*100):0;
+  const dex=exs.filter(ex=>countDone(log,ex)>=ex.sets).length;
+  let html='';
+  exs.forEach(ex=>{
+    const vals=log.ed[ex.id]||[];
+    const d=countDone(log,ex);
+    let sh='';
+    for(let s=0;s<ex.sets;s++){
+      const v=vals[s]??'';const isDone=Number(v)>0;
+      sh+=`<div class="spill ${isDone?'done':''}"><span>S${s+1}:</span>
+        <input type="number" value="${v}" placeholder="${ex.maxReps}" min="0"
+          oninput="setRep('${ex.id}',${s},this.value)" style="color:inherit">
+        <span>/${ex.maxReps}</span></div>`;
+    }
+    const g=ex.groupId?cfg.groups.find(g=>g.id===ex.groupId):null;
+    html+=`<div class="exitem">
+      <div class="extop">
+        <span style="font-size:16px">${ex.icon||'🏋️'}</span>
+        <span class="exname">${ex.name}</span>
+        <span class="exbadge">${d}/${ex.sets} ✓</span>
+        ${g?`<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:${g.color}22;color:${g.color};font-weight:600">${g.name}</span>`:''}
+      </div>
+      <div class="srow">${sh}</div></div>`;
+  });
+  const w=document.createElement('div');
+  w.className='widget open'+(pct>=100?' done':'');w.id='wf';w.dataset.o=1;
+  w.innerHTML=`<div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('wf')">
+      <div class="wico wf">🏋️</div>
+      <div class="wtit"><b>Fitness</b><small>${dex}/${exs.length} Einheiten · ${done}/${tot} Sätze</small></div>
+      <div class="wchev">▾</div></div>
+    <div class="wbody">
+      <div class="prog"><div class="pbar"><div class="pfill f" style="width:${pct}%"></div></div>
+        <div class="plbl"><span>${done} erledigt</span><span>${tot} Sätze</span></div></div>
+      <div class="exlist">${html||'<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
+  return w;
+}
+
+function setRep(exId,si,val){
+  const log=glog(activeDay);
+  if(!log.ed[exId])log.ed[exId]=[];
+  log.ed[exId][si]=val;
+  saveLogs();
+  patchFitness(log);
+}
+
+function patchFitness(log){
+  const dex=forDay(cfg.exercises,activeDay);
+  let tot=0,done=0;
+  dex.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex)});
+  const pct=tot>0?Math.round(done/tot*100):0;
+  const wf=document.getElementById('wf');if(!wf)return;
+  const doneEx=dex.filter(ex=>countDone(log,ex)>=ex.sets).length;
+  const sub=wf.querySelector('.wtit small');
+  if(sub)sub.textContent=`${doneEx}/${dex.length} Einheiten · ${done}/${tot} Sätze`;
+  const pf=wf.querySelector('.pfill.f');if(pf)pf.style.width=pct+'%';
+  const pl=wf.querySelector('.plbl');if(pl)pl.children[0].textContent=done+' erledigt';
+  wf.querySelectorAll('.exitem').forEach((item,ei)=>{
+    const ex=dex[ei];if(!ex)return;
+    const d=countDone(log,ex);
+    const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${ex.sets} ✓`;
+    const vals=log.ed[ex.id]||[];
+    item.querySelectorAll('.spill').forEach((p,si)=>p.classList.toggle('done',Number(vals[si])>0));
+  });
+  wf.classList.toggle('done',pct>=100);
+}
+
+// MEALS
+function mkMeals(log,meals){
+  const s=[...meals].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const chk=s.filter(m=>log.md[m.id]).length;
+  const pct=meals.length?Math.round(chk/meals.length*100):0;
+  let html='';
+  s.forEach(m=>{
+    const on=!!log.md[m.id];
+    const g=m.groupId?cfg.groups.find(g=>g.id===m.groupId):null;
+    html+=`<div class="mitem">
+      <div class="mchk ${on?'on':''}" onclick="tglM('${m.id}')">${on?'✓':''}</div>
+      <div class="minf">
+        <div class="mtim">${m.time||'–'}${g?` · <span style="color:${g.color}">${g.name}</span>`:''}</div>
+        <div class="mnam" style="${on?'text-decoration:line-through;opacity:.5':''}">${m.icon||''} ${m.name}</div>
+        ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+      </div></div>`;
+  });
+  const w=document.createElement('div');
+  w.className='widget open'+(pct>=100?' done':'');w.id='wm';w.dataset.o=2;
+  w.innerHTML=`<div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('wm')">
+      <div class="wico wm">🥗</div>
+      <div class="wtit"><b>Mahlzeiten & Tabletten</b><small>${chk}/${meals.length} erledigt</small></div>
+      <div class="wchev">▾</div></div>
+    <div class="wbody">
+      <div class="prog"><div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
+        <div class="plbl"><span>${chk} erledigt</span><span>${meals.length} gesamt</span></div></div>
+      <div class="mlist">${html||'<div class="empty">Keine Einträge für heute.</div>'}</div></div>`;
+  return w;
+}
+
+function tglM(id){
+  const log=glog(activeDay);log.md[id]=!log.md[id];saveLogs();
+  // lightweight patch
+  const dml=forDay(cfg.meals,activeDay);
+  const chk=dml.filter(m=>log.md[m.id]).length;
+  const pct=dml.length?Math.round(chk/dml.length*100):0;
+  const wm=document.getElementById('wm');if(!wm)return;
+  wm.querySelector('.wtit small').textContent=`${chk}/${dml.length} erledigt`;
+  const pf=wm.querySelector('.pfill.m');if(pf)pf.style.width=pct+'%';
+  wm.querySelector('.plbl').children[0].textContent=chk+' erledigt';
+  wm.classList.toggle('done',pct>=100);
+  wm.querySelectorAll('.mitem').forEach(item=>{
+    const chkEl=item.querySelector('.mchk');
+    if(!chkEl)return;
+    const fn=chkEl.getAttribute('onclick')||'';
+    const mid=fn.match(/'([^']+)'/)?.[1];if(!mid)return;
+    const on=!!log.md[mid];
+    chkEl.classList.toggle('on',on);chkEl.textContent=on?'✓':'';
+    const nm=item.querySelector('.mnam');
+    if(nm)nm.style.cssText=on?'text-decoration:line-through;opacity:.5':'';
+  });
+}
+
+function twid(id){
+  const el=document.getElementById(id);if(!el)return;
+  el.classList.toggle('open');
+  const log=glog(activeDay);
+  log.open=[...document.querySelectorAll('.widget.open')].map(w=>w.id);
+  saveLogs();
+}
+
+// ── SORT ──
+function setSort(m,el){
+  sortMode=m;
+  document.querySelectorAll('.schip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');applySort();
+}
+function applySort(){
+  const c=document.getElementById('wlist');
+  const ws=[...c.querySelectorAll('.widget')];
+  if(sortMode==='pending')ws.sort((a,b)=>a.classList.contains('done')-b.classList.contains('done'));
+  else if(sortMode==='done')ws.sort((a,b)=>b.classList.contains('done')-a.classList.contains('done'));
+  else ws.sort((a,b)=>+a.dataset.o - +b.dataset.o);
+  ws.forEach(w=>c.appendChild(w));
+}
+
+// ── DRAG ──
+function initDrag(log){
+  const c=document.getElementById('wlist');let drag=null,ph=null;
+  c.querySelectorAll('.drgh').forEach(h=>{
+    h.addEventListener('touchstart',st,{passive:true});
+    h.addEventListener('mousedown',st);
+  });
+  function st(e){
+    drag=e.currentTarget.closest('.widget');drag.classList.add('dragging');
+    ph=document.createElement('div');
+    ph.style.cssText=`height:${drag.offsetHeight}px;border-radius:18px;background:var(--border);opacity:.2;`;
+    document.addEventListener('touchmove',mv,{passive:false});document.addEventListener('mousemove',mv);
+    document.addEventListener('touchend',en);document.addEventListener('mouseup',en);
+  }
+  function gy(e){return e.touches?e.touches[0].clientY:e.clientY}
+  function mv(e){
+    if(!drag)return;if(e.cancelable)e.preventDefault();
+    const y=gy(e),ss=[...c.querySelectorAll('.widget:not(.dragging)')];let ins=false;
+    for(const s of ss){const r=s.getBoundingClientRect();if(y<r.top+r.height/2){c.insertBefore(ph,s);ins=true;break;}}
+    if(!ins)c.appendChild(ph);
+  }
+  function en(){
+    if(!drag)return;
+    if(ph.parentNode)c.insertBefore(drag,ph);if(ph.parentNode)ph.remove();
+    drag.classList.remove('dragging');
+    log.order=[...c.querySelectorAll('.widget')].map(w=>w.id);saveLogs();
+    drag=null;ph=null;
+    document.removeEventListener('touchmove',mv);document.removeEventListener('mousemove',mv);
+    document.removeEventListener('touchend',en);document.removeEventListener('mouseup',en);
+  }
+}
+
+// ── RESET ──
+function resetDay(){
+  if(!confirm(DF[activeDay]+' zurücksetzen?'))return;
+  const k=dkey(activeDay);logs[k]={wf:[],ed:{},md:{},order:[],open:[]};
+  saveLogs();renderWidgets();showToast('🔄 Zurückgesetzt');
+}
+
+// ── EXPORT/IMPORT ──
+function exportData(){
+  const blob=new Blob([JSON.stringify({cfg,logs},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`daytracker_${TODAY_KEY}.json`;a.click();URL.revokeObjectURL(url);
+  showToast('📤 Exportiert!');
+}
+function importData(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{const d=JSON.parse(e.target.result);if(d.cfg)cfg=d.cfg;if(d.logs)logs=d.logs;saveCfg();saveLogs();renderWidgets();showToast('📥 Importiert!');}
+    catch{showToast('❌ Import fehlgeschlagen');}
+    inp.value='';
+  };r.readAsText(f);
+}
+
+// ══ PANELS ══
+function openMenu(){document.getElementById('ov-menu').classList.add('open')}
+function closeMenu(){document.getElementById('ov-menu').classList.remove('open');renderWidgets()}
+function goSub(id){
+  document.getElementById('ov-menu').classList.remove('open');
+  if(id==='ov-water')initWater();
+  else if(id==='ov-groups')initGroups();
+  else if(id==='ov-ex')initEx();
+  else if(id==='ov-meals')initMls();
+  document.getElementById(id).classList.add('open');
+}
+function backSub(id){
+  document.getElementById(id).classList.remove('open');
+  document.getElementById('ov-menu').classList.add('open');
+}
+
+// WATER PANEL
+function initWater(){
+  document.getElementById('s-goal').value=cfg.water.goalMl;
+  document.getElementById('s-gml').value=cfg.water.glassMl;
+  document.getElementById('s-gico').textContent=cfg.water.icon;
+  updWNote();
+}
+function onWC(){
+  cfg.water.goalMl=parseInt(document.getElementById('s-goal').value)||2000;
+  cfg.water.glassMl=parseInt(document.getElementById('s-gml').value)||250;
+  saveCfg();updWNote();
+}
+function updWNote(){
+  const g=parseInt(document.getElementById('s-goal').value)||cfg.water.goalMl;
+  const m=parseInt(document.getElementById('s-gml').value)||cfg.water.glassMl;
+  const n=Math.ceil(g/m);
+  document.getElementById('wnote').textContent=`→ ${n} Gläser à ${m} ml = ${n*m} ml`;
+}
+
+// GROUPS PANEL
+function initGroups(){renderGrpList();renderDChips('ng-days',[])}
+function renderGrpList(){
+  const el=document.getElementById('grp-list');
+  if(!cfg.groups.length){el.innerHTML='<div class="empty">Noch keine Gruppen.</div>';return;}
+  el.innerHTML=cfg.groups.map(g=>`
+    <div class="grprow">
+      <div class="gdot" style="background:${g.color}"></div>
+      <span class="gname">${g.name}</span>
+      <span class="gdays">${g.days.map(d=>DS[d]).join(', ')||'alle Tage'}</span>
+      <span class="cdel" onclick="delGrp('${g.id}')">🗑</span>
+    </div>`).join('');
+}
+function renderDChips(cid,sel){
+  const el=document.getElementById(cid);if(!el)return;
+  el.innerHTML=DS.map((d,i)=>`<div class="dchip ${sel.includes(i)?'on':''}" data-d="${i}">${d}</div>`).join('');
+  el.querySelectorAll('.dchip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+}
+function getSelD(cid){return[...document.querySelectorAll(`#${cid} .dchip.on`)].map(c=>+c.dataset.d)}
+function addGroup(){
+  const name=document.getElementById('ng-name').value.trim();
+  const color=document.getElementById('ng-col').value;
+  const days=getSelD('ng-days');
+  if(!name){showToast('⚠️ Name fehlt');return;}
+  cfg.groups.push({id:'g'+Date.now(),name,color,days});saveCfg();
+  document.getElementById('ng-name').value='';
+  renderGrpList();renderDChips('ng-days',[]);
+  refreshGrpSels();showToast('🗂 Gruppe hinzugefügt');
+}
+function delGrp(id){
+  cfg.groups=cfg.groups.filter(g=>g.id!==id);
+  cfg.exercises.forEach(e=>{if(e.groupId===id)e.groupId=null});
+  cfg.meals.forEach(m=>{if(m.groupId===id)m.groupId=null});
+  saveCfg();renderGrpList();refreshGrpSels();
+}
+function refreshGrpSels(){
+  // always rebuild the group selects so they're current when panels are opened
+  buildGSel('nex-grp');buildGSel('nml-grp');
+  // re-render cfg lists if their panels are open
+  if(document.getElementById('ov-ex').classList.contains('open'))renderExList();
+  if(document.getElementById('ov-meals').classList.contains('open'))renderMlList();
+}
+function buildGSel(id){
+  const el=document.getElementById(id);if(!el)return;
+  const cur=el.value;
+  el.innerHTML='<option value="">Keine Gruppe</option>'+
+    cfg.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  el.value=cur;
+}
+
+// EXERCISES PANEL
+function initEx(){renderExList();buildGSel('nex-grp');document.getElementById('nex-ico').textContent=pendIco.nex}
+function renderExList(){
+  const el=document.getElementById('ex-list');if(!el)return;
+  if(!cfg.exercises.length){el.innerHTML='<div class="empty">Noch keine Übungen.</div>';return;}
+  el.innerHTML=cfg.exercises.map((ex,i)=>`
+    <div class="crow">
+      <div class="ctop">
+        <span class="cico" onclick="openIP('ex_${i}')">${ex.icon||'🏋️'}</span>
+        <span class="cname">${ex.name}</span>
+        <span style="font-size:11px;color:var(--muted)">${ex.sets}×${ex.maxReps}</span>
+        <span class="cdel" onclick="delEx(${i})">🗑</span>
+      </div>
+      <div class="cmeta">
+        <select class="csel" onchange="updExGrp(${i},this.value)">
+          <option value="">Keine Gruppe</option>
+          ${cfg.groups.map(g=>`<option value="${g.id}" ${ex.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('');
+}
+function addEx(){
+  const name=document.getElementById('nex-name').value.trim();
+  const sets=parseInt(document.getElementById('nex-sets').value)||3;
+  const maxReps=parseInt(document.getElementById('nex-max').value)||10;
+  const groupId=document.getElementById('nex-grp').value||null;
+  if(!name){showToast('⚠️ Name fehlt');return;}
+  cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId});
+  saveCfg();
+  document.getElementById('nex-name').value='';
+  document.getElementById('nex-sets').value='';
+  document.getElementById('nex-max').value='';
+  pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
+  renderExList();showToast('🏋️ Übung hinzugefügt');
+}
+function delEx(i){cfg.exercises.splice(i,1);saveCfg();renderExList()}
+function updExGrp(i,v){cfg.exercises[i].groupId=v||null;saveCfg()}
+
+// MEALS PANEL
+function initMls(){renderMlList();buildGSel('nml-grp');document.getElementById('nml-ico').textContent=pendIco.nml}
+function renderMlList(){
+  const el=document.getElementById('ml-list');if(!el)return;
+  if(!cfg.meals.length){el.innerHTML='<div class="empty">Noch keine Einträge.</div>';return;}
+  el.innerHTML=cfg.meals.map((m,i)=>`
+    <div class="crow">
+      <div class="ctop">
+        <span class="cico" onclick="openIP('ml_${i}')">${m.icon||'🥗'}</span>
+        <span class="cname">${m.time?m.time+' · ':''}${m.name}</span>
+        <span class="cdel" onclick="delMl(${i})">🗑</span>
+      </div>
+      <div class="cmeta">
+        <select class="csel" onchange="updMlGrp(${i},this.value)">
+          <option value="">Keine Gruppe</option>
+          ${cfg.groups.map(g=>`<option value="${g.id}" ${m.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('');
+}
+function addMl(){
+  const name=document.getElementById('nml-name').value.trim();
+  const time=document.getElementById('nml-time').value;
+  const desc=document.getElementById('nml-desc').value.trim();
+  const groupId=document.getElementById('nml-grp').value||null;
+  if(!name){showToast('⚠️ Name fehlt');return;}
+  cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,time,name,desc,groupId});
+  saveCfg();
+  document.getElementById('nml-name').value='';
+  document.getElementById('nml-time').value='';
+  document.getElementById('nml-desc').value='';
+  pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
+  renderMlList();showToast('🥗 Eintrag hinzugefügt');
+}
+function delMl(i){cfg.meals.splice(i,1);saveCfg();renderMlList()}
+function updMlGrp(i,v){cfg.meals[i].groupId=v||null;saveCfg()}
+
+// ── ICON PICKER ──
+function openIP(target){
+  ipt=target;
+  document.getElementById('igrid').innerHTML=ICONS.map(ic=>`<div class="iopt" onclick="pickIC('${ic}')">${ic}</div>`).join('');
+  document.getElementById('ipov').classList.add('open');
+}
+function closeIP(){document.getElementById('ipov').classList.remove('open');ipt=null}
+document.getElementById('ipov').addEventListener('click',function(e){if(e.target===this)closeIP()});
+function pickIC(ic){
+  if(!ipt){closeIP();return;}
+  if(ipt==='glass'){cfg.water.icon=ic;document.getElementById('s-gico').textContent=ic;saveCfg();}
+  else if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
+  else if(ipt==='nml'){pendIco.nml=ic;document.getElementById('nml-ico').textContent=ic;}
+  else if(ipt.startsWith('ex_')){const i=+ipt.split('_')[1];cfg.exercises[i].icon=ic;saveCfg();renderExList();}
+  else if(ipt.startsWith('ml_')){const i=+ipt.split('_')[1];cfg.meals[i].icon=ic;saveCfg();renderMlList();}
+  closeIP();
+}
+
+// ── TOAST ──
+let _tt;
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2100);
+}
+
+loadAll();renderTabs();renderWidgets();
+</script>
+</body>
+</html>
