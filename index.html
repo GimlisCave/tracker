@@ -518,17 +518,22 @@ function addSteps(n,key){
   const log=glog(key);log.sc=(log.sc||0)+n;saveLogs();buildPage('page-curr', activeDate);
 }
 function setWeight(val, key) {
+  // Ersetzt Komma durch Punkt und erlaubt 2 Nachkommastellen
+  let num = parseFloat(val.replace(',', '.')) || 0;
+  num = Math.round(num * 100) / 100; // Rundet auf 2 Stellen
+  
   const log = glog(key);
-  log.wg = parseFloat(val.replace(',', '.')) || 0;
+  log.wg = num;
   saveLogs();
-  // Wir rendern die Seite neu, damit der Vergleichswert überall aktuell ist
-  buildPage('page-curr', activeDate);
+  
+  // Rendert die Seite erst neu, wenn die Eingabe fertig ist
+  renderThreePages(); 
 }
 
 function mkWeight(log, key) {
   const curWeight = log.wg || 0;
   
-  // Berechnung: Gewicht vor 1 Woche
+  // Berechnung: Gewicht vor genau 7 Tagen
   const d = new Date(key);
   d.setDate(d.getDate() - 7);
   const oldKey = toKey(d);
@@ -539,7 +544,7 @@ function mkWeight(log, key) {
   let diffClass = "";
   
   if (curWeight > 0 && oldWeight > 0) {
-    const diff = (curWeight - oldWeight).toFixed(1);
+    const diff = (curWeight - oldWeight).toFixed(2);
     if (diff > 0) {
       diffText = `+${diff} kg`;
       diffClass = "plus";
@@ -554,21 +559,24 @@ function mkWeight(log, key) {
   const w = document.createElement('div');
   w.className = 'widget open';
   w.id = 'wg-' + key;
-  w.dataset.o = 3; // Position unter Mahlzeiten
+  w.dataset.o = 3;
   
   w.innerHTML = `
     <div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wg-${key}','${key}')">
       <div class="wico" style="background:rgba(160, 96, 240, 0.2)">⚖️</div>
-      <div class="wtit"><b>Gewicht</b><small>${curWeight > 0 ? curWeight + ' kg' : 'Noch kein Eintrag'}</small></div>
+      <div class="wtit"><b>Gewicht</b><small>${curWeight > 0 ? curWeight.toLocaleString('de-DE') + ' kg' : 'Eintragen...'}</small></div>
       <div class="wchev">▾</div>
     </div>
     <div class="wbody">
       <div class="weight-row">
-        <input class="weight-inp" type="number" step="0.1" value="${curWeight || ''}" 
-          placeholder="0.0" oninput="setWeight(this.value, '${key}')" inputmode="decimal">
+        <input class="weight-inp" type="number" step="0.01" value="${curWeight || ''}" 
+          placeholder="0,00" 
+          onchange="setWeight(this.value, '${key}')" 
+          onfocus="if(this.value=='0')this.value=''"
+          inputmode="decimal">
         <div class="weight-stats">
-          <div style="margin-bottom:2px">Vor 7 Tagen: ${oldWeight > 0 ? oldWeight + ' kg' : '-'}</div>
+          <div style="margin-bottom:2px">Vor 7 Tagen: ${oldWeight > 0 ? oldWeight.toLocaleString('de-DE') + ' kg' : '-'}</div>
           <div class="weight-diff ${diffClass}">${diffText}</div>
         </div>
       </div>
