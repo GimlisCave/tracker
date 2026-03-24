@@ -421,33 +421,45 @@ function renderThreePages(){
 }
 
 function buildPage(cid, d){
-  const c=document.getElementById(cid);
+  const c = document.getElementById(cid);
   if(!c) return;
-  c.innerHTML='';
-  const key=toKey(d);
-  const log=glog(key);
-  const wlist=document.createElement('div');
-  wlist.id='wlist-'+key;
-  wlist.className='wlist';
+  c.innerHTML = '';
+  const key = toKey(d);
+  const log = glog(key);
+  const wlist = document.createElement('div');
+  wlist.id = 'wlist-' + key;
+  wlist.className = 'wlist';
   
-  const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);
-  while(log.wf.length<ng)log.wf.push(false);
-  if(log.wf.length>ng)log.wf.length=ng;
+  const ng = Math.ceil(cfg.water.goalMl / cfg.water.glassMl);
+  while(log.wf.length < ng) log.wf.push(false);
   
-  wlist.appendChild(mkSteps(log,key));
-  wlist.appendChild(mkWater(log,ng,key));
-  if(cfg.exercises.length) wlist.appendChild(mkFitness(log,cfg.exercises,key));
-  if(cfg.meals.length||(log.cm&&log.cm.length)) wlist.appendChild(mkMeals(log,cfg.meals,key));
+  // --- HIER WIRD GEFILTERT ---
+  const dayExs = forDayKey(cfg.exercises, key);
+  const dayMls = forDayKey(cfg.meals, key);
+
+  wlist.appendChild(mkSteps(log, key));
+  wlist.appendChild(mkWater(log, ng, key));
+  
+  // Nur anzeigen, wenn für diesen Tag Übungen geplant sind
+  if(dayExs.length) {
+    wlist.appendChild(mkFitness(log, dayExs, key));
+  }
+  
+  // Mahlzeiten (regulär gefiltert + Cheat Meals vom Tag)
+  if(dayMls.length || (log.cm && log.cm.length)) {
+    wlist.appendChild(mkMeals(log, dayMls, key));
+  }
+  
   wlist.appendChild(mkWeight(log, key));
+  
   c.appendChild(wlist);
   
-  const openIds=log.open.length?log.open:['ws-'+key,'ww-'+key,'wf-'+key,'wm-'+key];
-  wlist.querySelectorAll('.widget').forEach(w=>w.classList.toggle('open',openIds.includes(w.id)));
+  const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key];
+  wlist.querySelectorAll('.widget').forEach(w => w.classList.toggle('open', openIds.includes(w.id)));
   
   applySort(key);
-  initDrag(log,key);
+  initDrag(log, key);
 }
-
 function dowFromDate(d){return JS2D[d.getDay()];}
 
 function mkWater(log,ng,key){
@@ -529,7 +541,18 @@ function setWeight(val, key) {
   // Rendert die Seite erst neu, wenn die Eingabe fertig ist
   renderThreePages(); 
 }
-
+function forDayKey(arr, key) {
+  const d = new Date(key);
+  const dow = JS2D[d.getDay()]; // Unser 0-6 System (Mo-So)
+  return arr.filter(it => {
+    // Wenn keine Gruppe zugewiesen ist, wird es IMMER angezeigt
+    if (!it.groupId) return true; 
+    const g = cfg.groups.find(g => g.id === it.groupId);
+    // Wenn Gruppe existiert, aber keine Tage gewählt sind -> alle Tage. 
+    // Ansonsten nur wenn der aktuelle Wochentag in der Gruppe ist.
+    return !g || !g.days || g.days.length === 0 || g.days.includes(dow);
+  });
+}
 function mkWeight(log, key) {
   const curWeight = log.wg || 0;
   
