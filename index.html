@@ -240,6 +240,7 @@ function saveCheat(){
 }
 
 function delCheat(id,idx){
+  if(!confirm('Ungeplantes Essen wirklich löschen?'))return;
   const log=glog(idx);
   if(log.cm){
     log.cm=log.cm.filter(c=>c.id!==id);
@@ -859,6 +860,7 @@ function addGroup(){
   renderGrpList();renderDChips('ng-days',[]);refreshGrpSels();showToast('🗂 Gruppe hinzugefügt');
 }
 function delGrp(id){
+  if(!confirm('Gruppe wirklich löschen?'))return;
   cfg.groups=cfg.groups.filter(g=>g.id!==id);
   cfg.exercises.forEach(e=>{if(e.groupId===id)e.groupId=null;});
   cfg.meals.forEach(m=>{if(m.groupId===id)m.groupId=null;});
@@ -909,7 +911,10 @@ function addEx(){
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
   renderExList();showToast('🏋️ Übung hinzugefügt');
 }
-function delEx(i){cfg.exercises.splice(i,1);saveCfg();renderExList();}
+function delEx(i){
+  if(!confirm('Übung wirklich löschen?'))return;
+  cfg.exercises.splice(i,1);saveCfg();renderExList();
+}
 function updExGrp(i,v){cfg.exercises[i].groupId=v||null;saveCfg();}
 
 // MEALS PANEL
@@ -959,7 +964,10 @@ function addMl(){
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();showToast('🥗 Eintrag hinzugefügt');
 }
-function delMl(i){cfg.meals.splice(i,1);saveCfg();renderMlList();}
+function delMl(i){
+  if(!confirm('Mahlzeit wirklich löschen?'))return;
+  cfg.meals.splice(i,1);saveCfg();renderMlList();
+}
 function updMlGrp(i,v){cfg.meals[i].groupId=v||null;saveCfg();}
 
 // ── ICON PICKER ──
