@@ -100,6 +100,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 /* Kalender nicht scrollbar */
 #ov-cal{overflow:hidden}
 #ov-cal .mscroll{flex:1;overflow:hidden;padding:10px 14px 20px;display:flex;flex-direction:column}
+.mscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 17px 40px}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0}
 .cal-nav h3{font-family:'DM Serif Display',serif;font-size:17px;margin:0}
 .cal-navbtn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text)}
