@@ -547,29 +547,42 @@ function applySort(idx){
 // ── DRAG ──
 function initDrag(log,idx){
   const c=document.getElementById('wlist-'+idx);if(!c)return;
-  let drag=null,ph=null;
+  let drag=null,ph=null,oy=0,sy=0;
   c.querySelectorAll('.drgh').forEach(h=>{
     h.addEventListener('touchstart',st,{passive:true});
     h.addEventListener('mousedown',st);
   });
+  function gy(e){return e.touches?e.touches[0].clientY:e.clientY;}
   function st(e){
-    drag=e.currentTarget.closest('.widget');drag.classList.add('dragging');
+    drag=e.currentTarget.closest('.widget');
+    const r=drag.getBoundingClientRect();
+    sy=gy(e);oy=r.top;
     ph=document.createElement('div');
-    ph.style.cssText=`height:${drag.offsetHeight}px;border-radius:18px;background:var(--border);opacity:.2;`;
+    ph.style.cssText=`height:${r.height}px;border-radius:18px;background:var(--border);opacity:.2;`;
+    c.insertBefore(ph,drag);
+    drag.classList.add('dragging');
+    drag.style.cssText=`position:fixed;top:${r.top}px;left:${r.left}px;width:${r.width}px;z-index:999;pointer-events:none;margin:0;opacity:.95;box-shadow:0 8px 24px rgba(0,0,0,.3);`;
     document.addEventListener('touchmove',mv,{passive:false});document.addEventListener('mousemove',mv);
     document.addEventListener('touchend',en);document.addEventListener('mouseup',en);
   }
-  function gy(e){return e.touches?e.touches[0].clientY:e.clientY;}
   function mv(e){
     if(!drag)return;if(e.cancelable)e.preventDefault();
-    const y=gy(e),ss=[...c.querySelectorAll('.widget:not(.dragging)')];let ins=false;
-    for(const s of ss){const r=s.getBoundingClientRect();if(y<r.top+r.height/2){c.insertBefore(ph,s);ins=true;break;}}
+    const y=gy(e);
+    drag.style.top=(oy+y-sy)+'px';
+    const ss=[...c.querySelectorAll('.widget:not(.dragging)')];let ins=false;
+    for(const s of ss){
+      if(s===ph)continue;
+      const r=s.getBoundingClientRect();
+      if(y<r.top+r.height/2){c.insertBefore(ph,s);ins=true;break;}
+    }
     if(!ins)c.appendChild(ph);
   }
   function en(){
     if(!drag)return;
-    if(ph.parentNode)c.insertBefore(drag,ph);if(ph.parentNode)ph.remove();
+    if(ph.parentNode)c.insertBefore(drag,ph);
+    if(ph.parentNode)ph.remove();
     drag.classList.remove('dragging');
+    drag.style.cssText='';
     log.order=[...c.querySelectorAll('.widget')].map(w=>w.id);saveLogs();
     drag=null;ph=null;
     document.removeEventListener('touchmove',mv);document.removeEventListener('mousemove',mv);
