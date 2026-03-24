@@ -10,6 +10,40 @@
 .swipe-inner{display:flex;width:300%;height:100%;transition:transform .28s cubic-bezier(.4,0,.2,1);will-change:transform;transform:translateX(-33.333%)}
 .swipe-inner.no-anim{transition:none}
 .swipe-page{flex-shrink:0;width:33.3333%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 17px 30px}
+
+/* Widget toggle button */
+.widget-toggle-btn{display:flex;align-items:center;justify-content:center;padding:5px 17px 2px;background:var(--bg)}
+.wvis-btn{font-size:11px;color:var(--muted);border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:3px 10px;cursor:pointer;font-family:inherit;transition:all .13s}
+.wvis-btn:active{transform:scale(.93)}
+
+/* Widget hidden state */
+.widget.hidden-widget{display:none}
+
+/* Widget visibility overlay */
+.wvis-ov{display:none;position:fixed;inset:0;z-index:300;background:var(--bg);flex-direction:column}
+.wvis-ov.open{display:flex}
+.wvis-list{flex:1;overflow-y:auto;padding:14px 17px;display:flex;flex-direction:column;gap:10px}
+.wvis-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .13s}
+.wvis-item.active{border-color:var(--accent);background:rgba(200,240,96,.06)}
+.wvis-check{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-left:auto;transition:all .12s}
+.wvis-item.active .wvis-check{background:var(--accent);border-color:var(--accent);color:#111}
+
+/* Group inactive badge */
+.grp-inactive-badge{font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(255,100,100,.12);color:#f06060;font-weight:600;margin-left:4px}
+
+/* Cheat meal picker */
+.cm-pick-section{margin-bottom:10px}
+.cm-pick-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px;display:block}
+.cm-prev-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.cm-prev-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:all .12s}
+.cm-prev-item:active{background:var(--surface);transform:scale(.97)}
+.cm-prev-item.selected{border-color:var(--accent);background:rgba(200,240,96,.06)}
+.cm-sep{text-align:center;font-size:11px;color:var(--muted);margin:8px 0;position:relative}
+.cm-sep::before,.cm-sep::after{content:'';position:absolute;top:50%;width:38%;height:1px;background:var(--border)}
+.cm-sep::before{left:0}.cm-sep::after{right:0}
+
+/* Cal swipe */
+#ov-cal .cal-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
 </style>
 </head>
 <body>
@@ -37,9 +71,16 @@
   <div class="schip active" onclick="setSort('default',this)">Standard</div>
   <div class="schip" onclick="setSort('pending',this)">Offen zuerst</div>
   <div class="schip" onclick="setSort('done',this)">Erledigt zuerst</div>
+  <div class="schip" onclick="openWVis()" style="margin-left:auto">👁 Widgets</div>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Widget Sichtbarkeit -->
+<div class="wvis-ov" id="wvis-ov">
+  <div class="ovhdr"><h2>👁 Widgets</h2><button class="back" onclick="closeWVis()">✕</button></div>
+  <div class="wvis-list" id="wvis-list"></div>
+</div>
 
 <div class="ov" id="ov-menu">
   <div class="ovhdr"><h2>⚙️ Einstellungen</h2><button class="back" onclick="closeMenu()">✕</button></div>
@@ -135,9 +176,15 @@
   </div>
 </div>
 
+<!-- Cheat Meal Overlay – mit Vorauswahl -->
 <div class="ov" id="ov-cheat">
   <div class="ovhdr"><h2>🍩 Cheat Meal</h2><button class="back" onclick="closeCheat()">✕</button></div>
   <div class="mscroll">
+    <div id="cm-prev-section" class="cm-pick-section" style="display:none">
+      <span class="cm-pick-label">Bereits erstellt – tippen zum Übernehmen</span>
+      <div class="cm-prev-list" id="cm-prev-list"></div>
+      <div class="cm-sep">oder neu eingeben</div>
+    </div>
     <div class="aform">
       <div class="arow"><span id="ch-ico" class="itap" onclick="openIP('ch')">🍩</span><input class="fi flex" type="text" id="ch-name" placeholder="Was gab's?"></div>
       <div class="arow">
@@ -169,15 +216,22 @@
   </div>
 </div>
 
+<!-- Kalender – mit Swipe -->
 <div class="ov" id="ov-cal">
   <div class="ovhdr"><h2>📅 Kalender</h2><button class="back" onclick="closeCal()">✕</button></div>
-  <div class="mscroll">
+  <div class="mscroll" style="overflow:hidden;display:flex;flex-direction:column;padding:10px 14px 20px">
     <div class="cal-nav">
       <div class="cal-navbtn" onclick="calMove(-1)">‹</div>
       <h3 id="cal-title"></h3>
       <div class="cal-navbtn" onclick="calMove(1)">›</div>
     </div>
-    <div class="cal-grid" id="cal-grid"></div>
+    <div style="flex:1;overflow:hidden;position:relative">
+      <div id="cal-swipe-inner" style="display:flex;width:300%;height:100%;transition:transform .28s cubic-bezier(.4,0,.2,1);transform:translateX(-33.333%)">
+        <div id="cal-page-prev" style="flex-shrink:0;width:33.3333%;display:flex;flex-direction:column"></div>
+        <div id="cal-page-curr" style="flex-shrink:0;width:33.3333%;display:flex;flex-direction:column"></div>
+        <div id="cal-page-next" style="flex-shrink:0;width:33.3333%;display:flex;flex-direction:column"></div>
+      </div>
+    </div>
     <div class="cal-legend" id="cal-legend"></div>
   </div>
 </div>
@@ -196,7 +250,7 @@ const JS2D=[6,0,1,2,3,4,5];
 const ICONS = ['🍎','🍌','🍉','🍇','🍓','🫐','🍒','🍑','🍍','🥝','🥑','🥦','🥕','🌽','🥐','🍞','🥞','🧀','🥩','🍗','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🍫','🍬','🍭','🍮','🍯','🥤','🧃','🥛','☕','🍵','🧉','🏋️','🏃','🚶','🚴','🚵','🏊','🤽','🚣','🏄','🧗','🧘','🤸','🤺','🥊','🥋','💪','👟','⚽','🏀','🏈','⚾','🎾','🏐','🏉','🏓','🏸','🏒','🏏','⛳','🏹','🎿','🏂','⛸️','🛹','🛼'];
 const MONTH_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
-let cfg={water:{goalMl:2000,glassMl:250,icon:'🥤'},steps:{goal:10000},groups:[],exercises:[],meals:[]};
+let cfg={water:{goalMl:2000,glassMl:250,icon:'🥤'},steps:{goal:10000},groups:[],exercises:[],meals:[],widgetOrder:null,hiddenWidgets:[]};
 let logs={};
 let sortMode='default';
 let ipt=null;
@@ -209,6 +263,44 @@ let cheatKey=null;
 let editExIdx = -1;
 let editMlIdx = -1;
 
+// ══ WIDGET VISIBILITY ══
+const WIDGET_DEFS = [
+  {id:'ws',label:'Schritte',icon:'👟'},
+  {id:'ww',label:'Wasser',icon:'💧'},
+  {id:'wf',label:'Übungen',icon:'🏋️'},
+  {id:'wm',label:'Mahlzeiten',icon:'🥗'},
+  {id:'wg',label:'Gewicht',icon:'⚖️'},
+];
+
+function openWVis(){
+  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];
+  const el=document.getElementById('wvis-list');
+  el.innerHTML=WIDGET_DEFS.map(w=>{
+    const vis=!cfg.hiddenWidgets.includes(w.id);
+    return `<div class="wvis-item ${vis?'active':''}" onclick="toggleWidgetVis('${w.id}',this)">
+      <span style="font-size:22px">${w.icon}</span>
+      <span style="font-size:14px;font-weight:600;flex:1">${w.label}</span>
+      <div class="wvis-check">${vis?'✓':''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('wvis-ov').classList.add('open');
+}
+function closeWVis(){
+  document.getElementById('wvis-ov').classList.remove('open');
+  saveCfg();
+  renderThreePages();
+}
+function toggleWidgetVis(wid,el){
+  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];
+  const idx=cfg.hiddenWidgets.indexOf(wid);
+  if(idx>=0){cfg.hiddenWidgets.splice(idx,1);el.classList.add('active');el.querySelector('.wvis-check').textContent='✓';}
+  else{cfg.hiddenWidgets.push(wid);el.classList.remove('active');el.querySelector('.wvis-check').textContent='';}
+}
+function isWidgetHidden(prefix){
+  return cfg.hiddenWidgets&&cfg.hiddenWidgets.includes(prefix);
+}
+
+// ══ SWIPE ITEMS ══
 function initItemSwipes() {
   let sx=0, sy=0, sEl=null, sLocked=false;
   document.addEventListener('touchstart', e => {
@@ -225,14 +317,8 @@ function initItemSwipes() {
     const dx = e.touches[0].clientX - sx;
     const dy = e.touches[0].clientY - sy;
     if(!sLocked) {
-      if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-        sLocked = 'h';
-      } else if(Math.abs(dy) > 10) {
-        sLocked = 'v';
-        sEl.classList.remove('swiping');
-        sEl = null;
-        return;
-      }
+      if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) { sLocked = 'h'; }
+      else if(Math.abs(dy) > 10) { sLocked = 'v'; sEl.classList.remove('swiping'); sEl = null; return; }
     }
     if(sLocked === 'h') {
       if(e.cancelable) e.preventDefault();
@@ -251,6 +337,10 @@ function initItemSwipes() {
         wrap.style.background = '#34c759';
         wrap.querySelector('.sit-bg-l').style.display='none';
         if(wrap.querySelector('.sit-bg-r')) wrap.querySelector('.sit-bg-r').style.display='flex';
+      } else {
+        wrap.style.background='';
+        if(wrap.querySelector('.sit-bg-l')) wrap.querySelector('.sit-bg-l').style.display='none';
+        if(wrap.querySelector('.sit-bg-r')) wrap.querySelector('.sit-bg-r').style.display='none';
       }
     }
   }, {passive: false});
@@ -259,63 +349,69 @@ function initItemSwipes() {
     const dx = e.changedTouches[0].clientX - sx;
     sEl.classList.remove('swiping');
     if(sLocked === 'h') {
-      if(dx > 80 && sEl.dataset.del) {
-        new Function(sEl.dataset.del)();
-        sEl.style.transform = 'translateX(0)';
-      } else if(dx < -80 && sEl.dataset.edit) {
-        new Function(sEl.dataset.edit)();
-        sEl.style.transform = 'translateX(0)';
-      } else {
-        sEl.style.transform = 'translateX(0)';
-      }
+      if(dx > 80 && sEl.dataset.del) { new Function(sEl.dataset.del)(); sEl.style.transform = 'translateX(0)'; }
+      else if(dx < -80 && sEl.dataset.edit) { new Function(sEl.dataset.edit)(); sEl.style.transform = 'translateX(0)'; }
+      else { sEl.style.transform = 'translateX(0)'; }
+      const wrap=sEl?sEl.parentElement:null;
+      if(wrap){wrap.style.background='';if(wrap.querySelector('.sit-bg-l'))wrap.querySelector('.sit-bg-l').style.display='none';if(wrap.querySelector('.sit-bg-r'))wrap.querySelector('.sit-bg-r').style.display='none';}
     }
-    sEl = null;
-    sLocked = false;
+    sEl = null; sLocked = false;
   }, {passive: true});
 }
 
+// ══ DAY SWIPE ══
 function initSwipe(){
   const wrap=document.getElementById('swipe-wrap');
   const inner=document.getElementById('swipe-inner');
   let sx=0,sy=0,locked=null,moved=false;
   wrap.addEventListener('touchstart',e=>{
-    if(e.target.closest('.sit-content') || e.target.closest('.drgh') || e.target.closest('.step-inp') || e.target.closest('.exlist') || e.target.closest('.mlist')) return;
-    sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-    locked=null;moved=false;
-    inner.classList.remove('no-anim');
+    if(e.target.closest('.sit-content')||e.target.closest('.drgh')||e.target.closest('.step-inp')||e.target.closest('.exlist')||e.target.closest('.mlist'))return;
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;locked=null;moved=false;inner.classList.remove('no-anim');
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
-    if(e.target.closest('.sit-content') || e.target.closest('.drgh') || e.target.closest('.step-inp') || e.target.closest('.exlist') || e.target.closest('.mlist')) return;
-    const dx=e.touches[0].clientX-sx;
-    const dy=e.touches[0].clientY-sy;
-    if(!locked){
-      if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)locked='h';
-      else if(Math.abs(dy)>8)locked='v';
-    }
-    if(locked==='h'){
-      if(e.cancelable)e.preventDefault();
-      inner.classList.add('no-anim');
-      inner.style.transform=`translateX(calc(-33.333% + ${dx}px))`;
-      moved=true;
-    }
+    if(e.target.closest('.sit-content')||e.target.closest('.drgh')||e.target.closest('.step-inp')||e.target.closest('.exlist')||e.target.closest('.mlist'))return;
+    const dx=e.touches[0].clientX-sx;const dy=e.touches[0].clientY-sy;
+    if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)locked='h';else if(Math.abs(dy)>8)locked='v';}
+    if(locked==='h'){if(e.cancelable)e.preventDefault();inner.classList.add('no-anim');inner.style.transform=`translateX(calc(-33.333% + ${dx}px))`;moved=true;}
   },{passive:false});
   wrap.addEventListener('touchend',e=>{
     if(!moved)return;
-    const dx=e.changedTouches[0].clientX-sx;
-    inner.classList.remove('no-anim');
-    if(dx<-50){
-      inner.style.transform=`translateX(-66.666%)`;
-      setTimeout(()=>shiftDays(1),280);
-    }else if(dx>50){
-      inner.style.transform=`translateX(0%)`;
-      setTimeout(()=>shiftDays(-1),280);
-    }else{
-      inner.style.transform=`translateX(-33.333%)`;
-    }
+    const dx=e.changedTouches[0].clientX-sx;inner.classList.remove('no-anim');
+    if(dx<-50){inner.style.transform=`translateX(-66.666%)`;setTimeout(()=>shiftDays(1),280);}
+    else if(dx>50){inner.style.transform=`translateX(0%)`;setTimeout(()=>shiftDays(-1),280);}
+    else{inner.style.transform=`translateX(-33.333%)`;}
     locked=null;moved=false;
   },{passive:true});
 }
 
+// ══ CALENDAR SWIPE ══
+function initCalSwipe(){
+  const inner=document.getElementById('cal-swipe-inner');
+  const ov=document.getElementById('ov-cal');
+  let sx=0,sy=0,locked=null,moved=false;
+  ov.addEventListener('touchstart',e=>{
+    if(!e.target.closest('#cal-swipe-inner'))return;
+    if(e.target.closest('.cal-navbtn'))return;
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;locked=null;moved=false;
+    inner.style.transition='none';
+  },{passive:true});
+  ov.addEventListener('touchmove',e=>{
+    const dx=e.touches[0].clientX-sx;const dy=e.touches[0].clientY-sy;
+    if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)locked='h';else if(Math.abs(dy)>8)locked='v';}
+    if(locked==='h'){if(e.cancelable)e.preventDefault();inner.style.transform=`translateX(calc(-33.333% + ${dx}px))`;moved=true;}
+  },{passive:false});
+  ov.addEventListener('touchend',e=>{
+    if(!moved){inner.style.transition='';inner.style.transform='translateX(-33.333%)';return;}
+    const dx=e.changedTouches[0].clientX-sx;
+    inner.style.transition='transform .28s cubic-bezier(.4,0,.2,1)';
+    if(dx<-50){inner.style.transform='translateX(-66.666%)';setTimeout(()=>{calMove(1);inner.style.transition='none';inner.style.transform='translateX(-33.333%)';setTimeout(()=>inner.style.transition='',50);},280);}
+    else if(dx>50){inner.style.transform='translateX(0%)';setTimeout(()=>{calMove(-1);inner.style.transition='none';inner.style.transform='translateX(-33.333%)';setTimeout(()=>inner.style.transition='',50);},280);}
+    else{inner.style.transform='translateX(-33.333%)';}
+    locked=null;moved=false;
+  },{passive:true});
+}
+
+// ══ CHEAT MEAL ══
 function openCheat(key) {
   cheatKey = key;
   pendIco.ch = '🍩';
@@ -325,13 +421,38 @@ function openCheat(key) {
   document.getElementById('ch-desc').value = '';
   document.getElementById('ch-type').value = 'Snack';
   document.getElementById('btn-save-cheat').textContent = '+ Eintragen';
+  // Vorhandene Cheat Meals aus allen Logs sammeln
+  const seen=new Map();
+  Object.values(logs).forEach(l=>{if(l.cm)l.cm.forEach(c=>{if(c.name&&!seen.has(c.name))seen.set(c.name,c);});});
+  const prevList=document.getElementById('cm-prev-list');
+  const prevSection=document.getElementById('cm-prev-section');
+  if(seen.size){
+    prevSection.style.display='';
+    prevList.innerHTML=[...seen.values()].map(c=>`
+      <div class="cm-prev-item" onclick="pickPrevCheat(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+        <span style="font-size:18px">${c.icon||'🍩'}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${c.name}</div>
+          ${c.cals?`<div style="font-size:11px;color:var(--muted)">${c.cals} kcal · ${c.type||'Snack'}</div>`:''}
+        </div>
+      </div>`).join('');
+  } else {
+    prevSection.style.display='none';
+    prevList.innerHTML='';
+  }
   document.getElementById('ov-cheat').classList.add('open');
 }
-
-function closeCheat(){
-  document.getElementById('ov-cheat').classList.remove('open');
+function pickPrevCheat(c){
+  document.getElementById('ch-name').value=c.name||'';
+  document.getElementById('ch-cals').value=c.cals||'';
+  document.getElementById('ch-desc').value=c.desc||'';
+  document.getElementById('ch-type').value=c.type||'Snack';
+  pendIco.ch=c.icon||'🍩';
+  document.getElementById('ch-ico').textContent=pendIco.ch;
+  document.querySelectorAll('.cm-prev-item').forEach(el=>el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
 }
-
+function closeCheat(){document.getElementById('ov-cheat').classList.remove('open');}
 function saveCheat() {
   const name = document.getElementById('ch-name').value.trim();
   const cals = parseInt(document.getElementById('ch-cals').value) || 0;
@@ -347,6 +468,7 @@ function saveCheat() {
   buildPage('page-curr', activeDate);
 }
 
+// ══ REP TOGGLE ══
 function tglRep(exId, si, maxReps, key) {
   const log = glog(key);
   if(!log.ed[exId]) log.ed[exId] = [];
@@ -357,40 +479,20 @@ function tglRep(exId, si, maxReps, key) {
 }
 
 function delCheat(id,key){
-  if(!confirm('Sind Sie sicher, dass Sie dieses ungeplante Essen löschen wollen?')) return;
+  if(!confirm('Cheat-Meal löschen?')) return;
   const log=glog(key);
-  if(log.cm){
-    log.cm=log.cm.filter(c=>c.id!==id);
-    saveLogs();
-    buildPage('page-curr', activeDate);
-  }
+  if(log.cm){log.cm=log.cm.filter(c=>c.id!==id);saveLogs();buildPage('page-curr', activeDate);}
 }
 
-function toKey(d){
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-function getOffsetDate(d, off){
-  const nd = new Date(d);
-  nd.setDate(nd.getDate() + off);
-  return nd;
-}
-
-function shiftDays(off){
-  activeDate.setDate(activeDate.getDate()+off);
-  renderThreePages();
-}
-
-function jumpToDate(d){
-  activeDate=new Date(d);
-  activeDate.setHours(0,0,0,0);
-  renderThreePages();
-}
+function toKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function getOffsetDate(d, off){const nd = new Date(d);nd.setDate(nd.getDate() + off);return nd;}
+function shiftDays(off){activeDate.setDate(activeDate.getDate()+off);renderThreePages();}
+function jumpToDate(d){activeDate=new Date(d);activeDate.setHours(0,0,0,0);renderThreePages();}
 
 function saveCfg(){localStorage.setItem('dtc',JSON.stringify(cfg));}
 function saveLogs(){localStorage.setItem('dtl',JSON.stringify(logs));}
 function loadAll(){
-  try{const c=localStorage.getItem('dtc');if(c)cfg={...cfg,...JSON.parse(c)};}catch(e){}
+  try{const c=localStorage.getItem('dtc');if(c){const parsed=JSON.parse(c);cfg={...cfg,...parsed};if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];}}catch(e){}
   try{const l=localStorage.getItem('dtl');if(l)logs=JSON.parse(l);}catch(e){}
 }
 
@@ -399,24 +501,35 @@ function glog(key){
   return logs[key];
 }
 
+// ══ WIDGET ORDER (global, gespeichert) ══
+// Speichert globale Reihenfolge als Array von Widget-Prefixen: ['ws','ww','wf','wm','wg']
+function getGlobalOrder(){
+  return cfg.widgetOrder && cfg.widgetOrder.length ? cfg.widgetOrder : ['ws','ww','wf','wm','wg'];
+}
+function saveGlobalOrder(widgets){
+  // widgets = NodeList oder Array von .widget Elementen
+  cfg.widgetOrder=[...widgets].map(w=>{
+    const id=w.id; // z.B. "ws-2024-01-01"
+    const prefix=id.split('-')[0]; // z.B. "ws"
+    return prefix;
+  });
+  saveCfg();
+}
+
 function renderThreePages(){
   const inner=document.getElementById('swipe-inner');
   inner.classList.add('no-anim');
   inner.style.transform='translateX(-33.333%)';
-  
   const p = getOffsetDate(activeDate,-1);
   const c = activeDate;
   const n = getOffsetDate(activeDate,1);
-  
   buildPage('page-prev', p);
   buildPage('page-curr', c);
   buildPage('page-next', n);
-  
   const todayStr = toKey(new Date());
   const isToday = toKey(c) === todayStr;
   document.getElementById('hdr-title').textContent = isToday ? 'Heute' : DS_LONG[JS2D[c.getDay()]];
   document.getElementById('hdr-date').textContent = c.getDate()+'. '+MONTH_DE[c.getMonth()]+' '+c.getFullYear();
-  
   setTimeout(()=>inner.classList.remove('no-anim'),50);
 }
 
@@ -429,38 +542,62 @@ function buildPage(cid, d){
   const wlist = document.createElement('div');
   wlist.id = 'wlist-' + key;
   wlist.className = 'wlist';
-  
+
   const ng = Math.ceil(cfg.water.goalMl / cfg.water.glassMl);
   while(log.wf.length < ng) log.wf.push(false);
-  
-  // --- HIER WIRD GEFILTERT ---
+
+  // Nur aktive Gruppen berücksichtigen
   const dayExs = forDayKey(cfg.exercises, key);
   const dayMls = forDayKey(cfg.meals, key);
 
-  wlist.appendChild(mkSteps(log, key));
-  wlist.appendChild(mkWater(log, ng, key));
-  
-  // Nur anzeigen, wenn für diesen Tag Übungen geplant sind
-  if(dayExs.length) {
-    wlist.appendChild(mkFitness(log, dayExs, key));
-  }
-  
-  // Mahlzeiten (regulär gefiltert + Cheat Meals vom Tag)
-  if(dayMls.length || (log.cm && log.cm.length)) {
-    wlist.appendChild(mkMeals(log, dayMls, key));
-  }
-  
-  wlist.appendChild(mkWeight(log, key));
-  
+  // Widgets bauen
+  const widgetMap = {};
+  widgetMap['ws'] = mkSteps(log, key);
+  widgetMap['ww'] = mkWater(log, ng, key);
+  widgetMap['wf'] = dayExs.length ? mkFitness(log, dayExs, key) : null;
+  widgetMap['wm'] = (dayMls.length || (log.cm && log.cm.length)) ? mkMeals(log, dayMls, key) : null;
+  widgetMap['wg'] = mkWeight(log, key);
+
+  // Globale Reihenfolge anwenden
+  const order = getGlobalOrder();
+  order.forEach(prefix=>{
+    const w = widgetMap[prefix];
+    if(!w) return;
+    if(isWidgetHidden(prefix)){w.classList.add('hidden-widget');}
+    wlist.appendChild(w);
+  });
+  // Falls ein Widget nicht in der Reihenfolge ist (Fallback)
+  Object.keys(widgetMap).forEach(prefix=>{
+    if(!order.includes(prefix)&&widgetMap[prefix]){
+      if(isWidgetHidden(prefix))widgetMap[prefix].classList.add('hidden-widget');
+      wlist.appendChild(widgetMap[prefix]);
+    }
+  });
+
   c.appendChild(wlist);
-  
+
   const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key];
   wlist.querySelectorAll('.widget').forEach(w => w.classList.toggle('open', openIds.includes(w.id)));
-  
+
   applySort(key);
   initDrag(log, key);
 }
+
 function dowFromDate(d){return JS2D[d.getDay()];}
+
+// Filtert nach aktiven Gruppen UND Wochentag
+function forDayKey(arr, key) {
+  const d = new Date(key);
+  const dow = JS2D[d.getDay()];
+  return arr.filter(it => {
+    if (!it.groupId) return true;
+    const g = cfg.groups.find(g => g.id === it.groupId);
+    if (!g) return true;
+    // Inaktive Gruppe → nie anzeigen
+    if (g.inactive) return false;
+    return !g.days || g.days.length === 0 || g.days.includes(dow);
+  });
+}
 
 function mkWater(log,ng,key){
   const f=log.wf.filter(Boolean).length;
@@ -486,9 +623,7 @@ function mkWater(log,ng,key){
 function tgl(i,key){const l=glog(key);l.wf[i]=!l.wf[i];saveLogs();buildPage('page-curr', activeDate);}
 
 function mkSteps(log,key){
-  const sc=log.sc||0;
-  const goal=cfg.steps.goal||10000;
-  const pct=Math.min(100,Math.round(sc/goal*100));
+  const sc=log.sc||0;const goal=cfg.steps.goal||10000;const pct=Math.min(100,Math.round(sc/goal*100));
   const w=document.createElement('div');
   w.className='widget open'+(pct>=100?' done':'');w.id='ws-'+key;w.dataset.o=-1;
   w.innerHTML=`<div class="drgh"><span>⠿</span></div>
@@ -514,8 +649,7 @@ function mkSteps(log,key){
 }
 
 function patchSteps(log,key){
-  const sc=log.sc||0;const goal=cfg.steps.goal||10000;
-  const pct=Math.min(100,Math.round(sc/goal*100));
+  const sc=log.sc||0;const goal=cfg.steps.goal||10000;const pct=Math.min(100,Math.round(sc/goal*100));
   const ws=document.getElementById('ws-'+key);if(!ws)return;
   ws.querySelector('.wtit small').textContent=`${sc.toLocaleString('de')} / ${goal.toLocaleString('de')} · ${pct}%`;
   const pf=ws.querySelector('.pfill');if(pf)pf.style.width=pct+'%';
@@ -523,67 +657,32 @@ function patchSteps(log,key){
   const kmEl=ws.querySelector('.km-txt');if(kmEl)kmEl.textContent=sc>0?(sc*0.000762).toFixed(1)+' km':'- km';
   ws.classList.toggle('done',pct>=100);
 }
-function setSteps(val,key){
-  const log=glog(key);log.sc=Math.max(0,parseInt(val)||0);saveLogs();patchSteps(log,key);
-}
-function addSteps(n,key){
-  const log=glog(key);log.sc=(log.sc||0)+n;saveLogs();buildPage('page-curr', activeDate);
-}
+function setSteps(val,key){const log=glog(key);log.sc=Math.max(0,parseInt(val)||0);saveLogs();patchSteps(log,key);}
+function addSteps(n,key){const log=glog(key);log.sc=(log.sc||0)+n;saveLogs();buildPage('page-curr', activeDate);}
+
 function setWeight(val, key) {
-  // Ersetzt Komma durch Punkt und erlaubt 2 Nachkommastellen
   let num = parseFloat(val.replace(',', '.')) || 0;
-  num = Math.round(num * 100) / 100; // Rundet auf 2 Stellen
-  
+  num = Math.round(num * 100) / 100;
   const log = glog(key);
   log.wg = num;
   saveLogs();
-  
-  // Rendert die Seite erst neu, wenn die Eingabe fertig ist
-  renderThreePages(); 
+  renderThreePages();
 }
-function forDayKey(arr, key) {
-  const d = new Date(key);
-  const dow = JS2D[d.getDay()]; // Unser 0-6 System (Mo-So)
-  return arr.filter(it => {
-    // Wenn keine Gruppe zugewiesen ist, wird es IMMER angezeigt
-    if (!it.groupId) return true; 
-    const g = cfg.groups.find(g => g.id === it.groupId);
-    // Wenn Gruppe existiert, aber keine Tage gewählt sind -> alle Tage. 
-    // Ansonsten nur wenn der aktuelle Wochentag in der Gruppe ist.
-    return !g || !g.days || g.days.length === 0 || g.days.includes(dow);
-  });
-}
+
 function mkWeight(log, key) {
   const curWeight = log.wg || 0;
-  
-  // Berechnung: Gewicht vor genau 7 Tagen
-  const d = new Date(key);
-  d.setDate(d.getDate() - 7);
-  const oldKey = toKey(d);
-  const oldLog = logs[oldKey];
+  const d = new Date(key);d.setDate(d.getDate() - 7);
+  const oldKey = toKey(d);const oldLog = logs[oldKey];
   const oldWeight = (oldLog && oldLog.wg) ? oldLog.wg : 0;
-  
-  let diffText = "Kein Vergleich";
-  let diffClass = "";
-  
+  let diffText = "Kein Vergleich", diffClass = "";
   if (curWeight > 0 && oldWeight > 0) {
     const diff = (curWeight - oldWeight).toFixed(2);
-    if (diff > 0) {
-      diffText = `+${diff} kg`;
-      diffClass = "plus";
-    } else if (diff < 0) {
-      diffText = `${diff} kg`;
-      diffClass = "minus";
-    } else {
-      diffText = "±0 kg";
-    }
+    if (diff > 0){diffText=`+${diff} kg`;diffClass="plus";}
+    else if (diff < 0){diffText=`${diff} kg`;diffClass="minus";}
+    else{diffText="±0 kg";}
   }
-
   const w = document.createElement('div');
-  w.className = 'widget open';
-  w.id = 'wg-' + key;
-  w.dataset.o = 3;
-  
+  w.className = 'widget open';w.id = 'wg-' + key;w.dataset.o = 3;
   w.innerHTML = `
     <div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wg-${key}','${key}')">
@@ -606,7 +705,9 @@ function mkWeight(log, key) {
     </div>`;
   return w;
 }
+
 function countDone(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length;}
+
 function mkFitness(log, exs, key) {
   let tot = 0, done = 0;
   exs.forEach(ex => { tot += ex.sets; done += countDone(log, ex); });
@@ -623,7 +724,7 @@ function mkFitness(log, exs, key) {
     onfocus="if(this.value=='0')this.value=''"
     onblur="if(this.value=='')this.value='0'"
     style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric">
-  <span>/${ex.maxReps}</span></div>`;;
+  <span>/${ex.maxReps}</span></div>`;
     }
     const g = ex.groupId ? cfg.groups.find(g => g.id === ex.groupId) : null;
     html += `<div class="exitem">
@@ -650,30 +751,29 @@ function mkFitness(log, exs, key) {
       <div class="exlist">${html || '<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
   return w;
 }
+
 function setRep(exId,si,val,key){
   const log=glog(key);
   if(!log.ed[exId])log.ed[exId]=[];
   log.ed[exId][si]=val;saveLogs();patchFitness(log,key);
 }
+
 function patchFitness(log,key){
-  const dex=cfg.exercises;
+  const dayExs=forDayKey(cfg.exercises,key);
   let tot=0,done=0;
-  dex.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex);});
+  dayExs.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex);});
   const pct=tot>0?Math.round(done/tot*100):0;
   const wf=document.getElementById('wf-'+key);if(!wf)return;
-  const doneEx=dex.filter(ex=>countDone(log,ex)>=ex.sets).length;
-  const sub=wf.querySelector('.wtit small');if(sub)sub.textContent=`${doneEx}/${dex.length} Einheiten · ${done}/${tot} Sätze`;
+  const doneEx=dayExs.filter(ex=>countDone(log,ex)>=ex.sets).length;
+  const sub=wf.querySelector('.wtit small');if(sub)sub.textContent=`${doneEx}/${dayExs.length} Einheiten · ${done}/${tot} Sätze`;
   const pf=wf.querySelector('.pfill.f');if(pf)pf.style.width=pct+'%';
   const pl=wf.querySelector('.plbl');if(pl)pl.children[0].textContent=done+' erledigt';
   wf.querySelectorAll('.exitem').forEach((item,ei)=>{
-    const ex=dex[ei];if(!ex)return;
+    const ex=dayExs[ei];if(!ex)return;
     const d=countDone(log,ex);
     const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${ex.sets} ✓`;
     const vals=log.ed[ex.id]||[];
-    item.querySelectorAll('.spill').forEach((p,si)=>{
-      const isDone = Number(vals[si])>0;
-      p.classList.toggle('done', isDone);
-    });
+    item.querySelectorAll('.spill').forEach((p,si)=>{p.classList.toggle('done', Number(vals[si])>0);});
   });
   wf.classList.toggle('done',pct>=100);
 }
@@ -681,62 +781,51 @@ function patchFitness(log,key){
 function mkMeals(log, meals, key) {
   if (!cfg.calories) cfg.calories = { goal: 2000 };
   if (!log.cm) log.cm = [];
-  
-  // Kalorien zählen: Wir prüfen jetzt den kombinierten Key "ID_TYP"
   let chkCals = 0;
   meals.forEach(m => {
     const ts = m.types && m.types.length ? m.types : (m.type ? [m.type] : ['Snack']);
-    ts.forEach(t => {
-      if (log.md[m.id + '_' + t]) chkCals += (m.cals || 0);
-    });
+    ts.forEach(t => { if (log.md[m.id + '_' + t]) chkCals += (m.cals || 0); });
   });
   log.cm.forEach(c => { chkCals += (c.cals || 0); });
-
   const goal = cfg.calories.goal;
   const pct = Math.min(100, Math.round(chkCals / goal * 100));
   const order = ['Frühstück', 'Mittagessen', 'Abendessen', 'Snack'];
   const grouped = {};
   order.forEach(o => grouped[o] = []);
-
   meals.forEach(m => {
     const ts = m.types && m.types.length ? m.types : (m.type ? [m.type] : ['Snack']);
     ts.forEach(t => { if (grouped[t]) grouped[t].push({ ...m, currentType: t, isCheat: false }); });
   });
-  
   log.cm.forEach(c => {
     const t = c.type || 'Snack';
     if (grouped[t]) grouped[t].push({ ...c, currentType: t, isCheat: true });
   });
-
   let html = '';
   order.forEach(t => {
     if (!grouped[t] || !grouped[t].length) return;
     html += `<div style="font-size:11px;color:var(--muted);margin:12px 0 6px 4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${t}</div>`;
     grouped[t].forEach(m => {
       if (m.isCheat) {
-        html += `<div class="mitem cheat" onclick="delCheat('${m.id}','${key}')" style="cursor:pointer; border-left: 3px solid #c8f060; padding-left: 10px; background: rgba(255,255,255,0.03); margin-bottom: 4px;">
+        html += `<div class="mitem cheat" onclick="delCheat('${m.id}','${key}')" style="cursor:pointer;border-left:3px solid #c8f060;padding-left:10px;background:rgba(255,255,255,0.03);margin-bottom:4px;">
             <div class="minf">
-              <div class="mtim" style="color:#c8f060; font-weight: bold;">${(m.cals || 0).toLocaleString('de')} kcal</div>
-              <div class="mnam">${m.icon || '🍩'} ${m.name}</div>
-              ${m.desc ? `<div class="mdsc">${m.desc}</div>` : ''}
-            </div>
-            </div>`;
+              <div class="mtim" style="color:#c8f060;font-weight:bold;">${(m.cals||0).toLocaleString('de')} kcal</div>
+              <div class="mnam">${m.icon||'🍩'} ${m.name}</div>
+              ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
+            </div></div>`;
       } else {
-        // HIER: Der Key ist jetzt "ID_TYP" (z.B. "m123_Frühstück")
         const itemKey = m.id + '_' + m.currentType;
         const on = !!log.md[itemKey];
-        html += `<div class="mitem" onclick="tglM('${itemKey}','${key}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom: 4px;">
+        html += `<div class="mitem" onclick="tglM('${itemKey}','${key}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:4px;">
             <div class="minf">
-              <div class="mtim">${(m.cals || 0).toLocaleString('de')} kcal</div>
-              <div class="mnam" style="${on ? 'text-decoration:line-through;opacity:.6' : ''}">${m.icon || ''} ${m.name}</div>
-              ${m.desc ? `<div class="mdsc">${m.desc}</div>` : ''}
+              <div class="mtim">${(m.cals||0).toLocaleString('de')} kcal</div>
+              <div class="mnam" style="${on?'text-decoration:line-through;opacity:.6':''}">${m.icon||''} ${m.name}</div>
+              ${m.desc?`<div class="mdsc">${m.desc}</div>`:''}
             </div>
-            <div class="mchk ${on ? 'on' : ''}" style="margin-left:10px; flex-shrink:0;">${on ? '✓' : ''}</div>
+            <div class="mchk ${on?'on':''}" style="margin-left:10px;flex-shrink:0;">${on?'✓':''}</div>
           </div>`;
       }
     });
   });
-
   const w = document.createElement('div');
   w.className = 'widget open' + (pct >= 100 ? ' done' : ''); w.id = 'wm-' + key; w.dataset.o = 2;
   w.style.background = 'rgba(200, 240, 96, 0.12)';
@@ -750,16 +839,13 @@ function mkMeals(log, meals, key) {
       <div class="prog"><div class="pbar"><div class="pfill m" style="width:${pct}%"></div></div>
         <div class="plbl"><span>${chkCals.toLocaleString('de')} kcal</span><span>${goal.toLocaleString('de')} kcal</span></div></div>
       <div class="mlist">${html || '<div class="empty">Keine Einträge für heute.</div>'}</div>
-      <button class="btn gy full" style="margin-top:12px; background:rgba(255,255,255,0.05)" onclick="openCheat('${key}')">+ Ungeplantes Essen</button>
+      <button class="btn gy full" style="margin-top:12px;background:rgba(255,255,255,0.05)" onclick="openCheat('${key}')">+ Ungeplantes Essen</button>
     </div>`;
   return w;
 }
 
 function tglM(itemKey, key){
-  const log = glog(key);
-  log.md[itemKey] = !log.md[itemKey];
-  saveLogs();
-  buildPage('page-curr', activeDate);
+  const log = glog(key);log.md[itemKey] = !log.md[itemKey];saveLogs();buildPage('page-curr', activeDate);
 }
 
 function twid(id,key){
@@ -810,20 +896,16 @@ function initDrag(log,key){
     const y=gy(e);
     drag.style.top=(oy+y-sy)+'px';
     const ss=[...c.querySelectorAll('.widget:not(.dragging)')];let ins=false;
-    for(const s of ss){
-      if(s===ph)continue;
-      const r=s.getBoundingClientRect();
-      if(y<r.top+r.height/2){c.insertBefore(ph,s);ins=true;break;}
-    }
+    for(const s of ss){if(s===ph)continue;const r=s.getBoundingClientRect();if(y<r.top+r.height/2){c.insertBefore(ph,s);ins=true;break;}}
     if(!ins)c.appendChild(ph);
   }
   function en(){
     if(!drag)return;
     if(ph.parentNode)c.insertBefore(drag,ph);
     if(ph.parentNode)ph.remove();
-    drag.classList.remove('dragging');
-    drag.style.cssText='';
-    log.order=[...c.querySelectorAll('.widget')].map(w=>w.id);saveLogs();
+    drag.classList.remove('dragging');drag.style.cssText='';
+    // Globale Reihenfolge speichern
+    saveGlobalOrder(c.querySelectorAll('.widget'));
     drag=null;ph=null;
     document.removeEventListener('touchmove',mv);document.removeEventListener('mousemove',mv);
     document.removeEventListener('touchend',en);document.removeEventListener('mouseup',en);
@@ -840,33 +922,28 @@ function importData(inp){
   const f=inp.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=e=>{
-    try{
-      const d=JSON.parse(e.target.result);
-      if(d.cfg)cfg=d.cfg;if(d.logs)logs=d.logs;
-      saveCfg();saveLogs();renderThreePages();showToast('📥 Importiert!');
-    }catch{showToast('❌ Import fehlgeschlagen');}
+    try{const d=JSON.parse(e.target.result);if(d.cfg)cfg=d.cfg;if(d.logs)logs=d.logs;saveCfg();saveLogs();renderThreePages();showToast('📥 Importiert!');}
+    catch{showToast('❌ Import fehlgeschlagen');}
     inp.value='';
   };r.readAsText(f);
 }
+
 function moveEx(idx, dir) {
   const to = idx + dir;
   if (to < 0 || to >= cfg.exercises.length) return;
   const el = cfg.exercises.splice(idx, 1)[0];
   cfg.exercises.splice(to, 0, el);
-  saveCfg();
-  renderExList(); // Liste im Einstellungs-Menü neu laden
-  renderThreePages(); // Widgets auf der Hauptseite aktualisieren
+  saveCfg();renderExList();renderThreePages();
 }
-
 function moveMl(idx, dir) {
   const to = idx + dir;
   if (to < 0 || to >= cfg.meals.length) return;
   const el = cfg.meals.splice(idx, 1)[0];
   cfg.meals.splice(to, 0, el);
-  saveCfg();
-  renderMlList();
-  renderThreePages();
+  saveCfg();renderMlList();renderThreePages();
 }
+
+// ══ KALENDER ══
 function openCal(){
   calViewYear=activeDate.getFullYear();calViewMonth=activeDate.getMonth();
   renderCal();
@@ -879,63 +956,67 @@ function calMove(dir){
   if(calViewMonth>11){calViewMonth=0;calViewYear++;}
   renderCal();
 }
-function renderCal(){
-  document.getElementById('cal-title').textContent=MONTH_DE[calViewMonth]+' '+calViewYear;
-  const grid=document.getElementById('cal-grid');grid.innerHTML='';
+
+function renderCalPage(pageId, year, month){
+  const page = document.getElementById(pageId);
+  if(!page) return;
+  page.innerHTML='';
+
+  // Wochentag-Header
+  const hdr=document.createElement('div');
+  hdr.className='cal-grid';
+  hdr.style.marginBottom='2px';
   ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(d=>{
-    const h=document.createElement('div');h.className='cal-dh';h.textContent=d;grid.appendChild(h);
+    const h=document.createElement('div');h.className='cal-dh';h.textContent=d;hdr.appendChild(h);
   });
-  const firstDay=new Date(calViewYear,calViewMonth,1);
+  page.appendChild(hdr);
+
+  const grid=document.createElement('div');
+  grid.className='cal-grid';
+  grid.style.flex='1';
+
+  const firstDay=new Date(year,month,1);
   let startDow=firstDay.getDay()-1;if(startDow<0)startDow=6;
-  const daysInMonth=new Date(calViewYear,calViewMonth+1,0).getDate();
+  const daysInMonth=new Date(year,month+1,0).getDate();
   for(let i=0;i<startDow;i++){
     const e=document.createElement('div');e.className='cal-day empty';grid.appendChild(e);
   }
   const todayNorm=new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
   for(let d=1;d<=daysInMonth;d++){
-    const date=new Date(calViewYear,calViewMonth,d);
+    const date=new Date(year,month,d);
     const k=toKey(date);
     const isFuture=date>todayNorm;
     const isToday=date.getTime()===todayNorm.getTime();
     const log=logs[k];
     const el=document.createElement('div');
     el.className='cal-day'+(isFuture?' future':'')+(isToday?' today':'');
-    if(k===toKey(activeDate)) el.classList.add('selected');
+    if(k===toKey(activeDate))el.classList.add('selected');
     const cdn=document.createElement('div');cdn.className='cdn';cdn.textContent=d;el.appendChild(cdn);
-if(log){
+    if(log){
       const wPct=()=>{const f=log.wf?log.wf.filter(Boolean).length:0;const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);return ng?Math.min(100,Math.round(f/ng*100)):0;};
       const sPct=()=>{const sc=log.sc||0;return cfg.steps.goal?Math.min(100,Math.round(sc/cfg.steps.goal*100)):0;};
+      // Übungen: nur Übungen des jeweiligen Tages
       const fPct=()=>{
+        const dayExs=forDayKey(cfg.exercises,k);
         let tot=0,done=0;
-        cfg.exercises.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});
+        dayExs.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});
         return tot?Math.min(100,Math.round(done/tot*100)):0;
       };
       const mPct=()=>{
         if(!cfg.calories)cfg.calories={goal:2000};
         let c=0;
-        cfg.meals.forEach(m=>{if(log.md&&log.md[m.id])c+=(m.cals||0);});
+        const dayMls=forDayKey(cfg.meals,k);
+        dayMls.forEach(m=>{if(log.md&&log.md[m.id])c+=(m.cals||0);});
         if(log.cm)log.cm.forEach(ch=>{c+=(ch.cals||0);});
         return cfg.calories.goal?Math.min(100,Math.round(c/cfg.calories.goal*100)):0;
       };
-
-      const wp = wPct(), sp = sPct(), fp = fPct(), mp = mPct();
-      
-      // --- NEU: Prüfen ob ALLES auf 100% ist ---
-      // Wir prüfen nur Kategorien, die auch Ziele haben (z.B. Fitness nur wenn Übungen da sind)
-      const hasExs = cfg.exercises.length > 0;
-      const hasMls = cfg.meals.length > 0;
-      
-      if(wp >= 100 && sp >= 100 && (!hasExs || fp >= 100) && (!hasMls || mp >= 100)) {
-          el.classList.add('all-done');
-      }
-
-      const bars=[
-        {p:wp,c:'#60c8f0'},
-        {p:sp,c:'#f0d060'},
-        {p:fp,c:'#f06060'},
-        {p:mp,c:'#c8f060'},
-      ].filter(b=>b.p>0);
-
+      const wp=wPct(),sp=sPct(),fp=fPct(),mp=mPct();
+      const dayExs2=forDayKey(cfg.exercises,k);
+      const hasExs=dayExs2.length>0;
+      const dayMls2=forDayKey(cfg.meals,k);
+      const hasMls=dayMls2.length>0;
+      if(wp>=100&&sp>=100&&(!hasExs||fp>=100)&&(!hasMls||mp>=100)){el.classList.add('all-done');}
+      const bars=[{p:wp,c:'#60c8f0'},{p:sp,c:'#f0d060'},{p:fp,c:'#f06060'},{p:mp,c:'#c8f060'}].filter(b=>b.p>0);
       if(bars.length){
         const stats=document.createElement('div');stats.className='cal-day-stats';
         bars.forEach(b=>{
@@ -944,21 +1025,28 @@ if(log){
           fill.style.cssText=`width:${b.p}%;background:${b.c}`;
           bar.appendChild(fill);stats.appendChild(bar);
         });
-        el.appendChild(stats);
-        el.classList.add('has-data');
+        el.appendChild(stats);el.classList.add('has-data');
       }
     }
-    el.onclick=()=>{
-      jumpToDate(date);
-      closeCal();
-    };
+    el.onclick=()=>{jumpToDate(date);closeCal();};
     grid.appendChild(el);
   }
+  page.appendChild(grid);
+}
+
+function renderCal(){
+  document.getElementById('cal-title').textContent=MONTH_DE[calViewMonth]+' '+calViewYear;
+  // Prev, Curr, Next Monat
+  let pm=calViewMonth-1,py=calViewYear;if(pm<0){pm=11;py--;}
+  let nm=calViewMonth+1,ny=calViewYear;if(nm>11){nm=0;ny++;}
+  renderCalPage('cal-page-prev',py,pm);
+  renderCalPage('cal-page-curr',calViewYear,calViewMonth);
+  renderCalPage('cal-page-next',ny,nm);
   document.getElementById('cal-legend').innerHTML=`
-    <div class="cl-item"><div class="cl-dot" style="background:var(--accent2)"></div>Wasser</div>
-    <div class="cl-item"><div class="cl-dot" style="background:var(--accent)"></div>Schritte</div>
-    <div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Übungen</div>
-    <div class="cl-item"><div class="cl-dot" style="background:var(--accent3)"></div>Mahlzeiten</div>`;
+    <div class="cl-item"><div class="cl-dot" style="background:#60c8f0"></div>Wasser</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Schritte</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#f06060"></div>Übungen</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#c8f060"></div>Mahlzeiten</div>`;
 }
 
 function openMenu(){document.getElementById('ov-menu').classList.add('open');}
@@ -972,10 +1060,7 @@ function goSub(id){
   else if(id==='ov-meals')initMls();
   document.getElementById(id).classList.add('open');
 }
-function backSub(id){
-  document.getElementById(id).classList.remove('open');
-  document.getElementById('ov-menu').classList.add('open');
-}
+function backSub(id){document.getElementById(id).classList.remove('open');document.getElementById('ov-menu').classList.add('open');}
 
 function initWater(){
   document.getElementById('s-goal').value=cfg.water.goalMl;
@@ -994,25 +1079,44 @@ function updWNote(){
   const n=Math.ceil(g/m);
   document.getElementById('wnote').textContent=`→ ${n} Gläser à ${m} ml = ${n*m} ml`;
 }
-function initSteps(){
-  document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;
-}
-function onStepsC(){
-  cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;
-  saveCfg();
-}
+function initSteps(){document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;}
+function onStepsC(){cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;saveCfg();}
 
+// ══ GRUPPEN ══
 function initGroups(){renderGrpList();renderDChips('ng-days',[]);}
 function renderGrpList(){
   const el=document.getElementById('grp-list');
   if(!cfg.groups.length){el.innerHTML='<div class="empty">Noch keine Gruppen.</div>';return;}
-  el.innerHTML=cfg.groups.map(g=>`
-    <div class="grprow">
-      <div class="gdot" style="background:${g.color}"></div>
-      <span class="gname">${g.name}</span>
-      <span class="gdays">${g.days.map(d=>DS_SHORT[d]).join(', ')||'alle Tage'}</span>
-      <span class="cdel" onclick="delGrp('${g.id}')">🗑</span>
+  el.innerHTML=cfg.groups.map((g,i)=>`
+    <div class="sit-wrap">
+      <div class="sit-bg sit-bg-l">🗑</div>
+      <div class="sit-bg sit-bg-r">✏️</div>
+      <div class="sit-content crow" data-del="delGrp('${g.id}')" data-edit="editGrp(${i})">
+        <div class="ctop">
+          <div class="gdot" style="background:${g.color}"></div>
+          <span class="cname">${g.name}${g.inactive?'<span class="grp-inactive-badge">inaktiv</span>':''}</span>
+          <span class="gdays" style="font-size:11px;color:var(--muted)">${g.days&&g.days.length?g.days.map(d=>DS_SHORT[d]).join(', '):'alle Tage'}</span>
+          <span onclick="toggleGrpActive('${g.id}');event.stopPropagation()" style="font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);margin-left:4px">${g.inactive?'aktivieren':'deaktiv.'}</span>
+        </div>
+      </div>
     </div>`).join('');
+}
+let editGrpIdx=-1;
+function editGrp(i){
+  const g=cfg.groups[i];
+  editGrpIdx=i;
+  document.getElementById('ng-name').value=g.name||'';
+  document.getElementById('ng-col').value=g.color||'#c8f060';
+  renderDChips('ng-days',g.days||[]);
+  document.getElementById('ng-name').scrollIntoView({behavior:'smooth'});
+  document.querySelector('#ov-groups .btn.gr').textContent='💾 Gruppe speichern';
+}
+function toggleGrpActive(id){
+  const g=cfg.groups.find(g=>g.id===id);
+  if(!g)return;
+  g.inactive=!g.inactive;
+  saveCfg();renderGrpList();renderThreePages();
+  showToast(g.inactive?'🚫 Gruppe deaktiviert':'✅ Gruppe aktiviert');
 }
 function renderDChips(cid,sel){
   const el=document.getElementById(cid);if(!el)return;
@@ -1025,9 +1129,18 @@ function addGroup(){
   const color=document.getElementById('ng-col').value;
   const days=getSelD('ng-days');
   if(!name){showToast('⚠️ Name fehlt');return;}
-  cfg.groups.push({id:'g'+Date.now(),name,color,days});saveCfg();
+  if(editGrpIdx>=0){
+    cfg.groups[editGrpIdx]={...cfg.groups[editGrpIdx],name,color,days};
+    editGrpIdx=-1;
+    document.querySelector('#ov-groups .btn.gr').textContent='+ Gruppe hinzufügen';
+    showToast('🗂 Gruppe gespeichert');
+  } else {
+    cfg.groups.push({id:'g'+Date.now(),name,color,days});
+    showToast('🗂 Gruppe hinzugefügt');
+  }
+  saveCfg();
   document.getElementById('ng-name').value='';
-  renderGrpList();renderDChips('ng-days',[]);refreshGrpSels();showToast('🗂 Gruppe hinzugefügt');
+  renderGrpList();renderDChips('ng-days',[]);refreshGrpSels();
 }
 function delGrp(id){
   if(!confirm('Gruppe wirklich löschen?'))return;
@@ -1045,10 +1158,11 @@ function buildGSel(id){
   const el=document.getElementById(id);if(!el)return;
   const cur=el.value;
   el.innerHTML='<option value="">Keine Gruppe</option>'+
-    cfg.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+    cfg.groups.map(g=>`<option value="${g.id}">${g.name}${g.inactive?' (inaktiv)':''}</option>`).join('');
   el.value=cur;
 }
 
+// ══ ÜBUNGEN ══
 function initEx(){renderExList();buildGSel('nex-grp');document.getElementById('nex-ico').textContent=pendIco.nex;}
 function renderExList(){
   const el=document.getElementById('ex-list');if(!el)return;
@@ -1068,7 +1182,6 @@ function renderExList(){
     </div>
 </div>`).join('');
 }
-
 function editEx(i){
   const ex=cfg.exercises[i];
   editExIdx=i;
@@ -1082,7 +1195,6 @@ function editEx(i){
   document.getElementById('ex-form-title').textContent='Übung bearbeiten';
   document.getElementById('ex-form-title').scrollIntoView({behavior:'smooth'});
 }
-
 function addEx(){
   const name=document.getElementById('nex-name').value.trim();
   const sets=parseInt(document.getElementById('nex-sets').value)||3;
@@ -1104,22 +1216,19 @@ function addEx(){
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
   renderExList();
 }
-
 function delEx(i){
   if(!confirm('Übung wirklich löschen?'))return;
   cfg.exercises.splice(i,1);saveCfg();renderExList();
 }
-function updExGrp(i,v){cfg.exercises[i].groupId=v||null;saveCfg();}
 
+// ══ MAHLZEITEN ══
 function initMls(){
   if(!cfg.calories)cfg.calories={goal:2000};
   document.getElementById('s-cal-goal').value=cfg.calories.goal;
   renderMlList();
   document.getElementById('nml-ico').textContent=pendIco.nml;
   const types=document.querySelectorAll('#nml-types .dchip');
-  types.forEach(c=>{
-    c.onclick=()=>c.classList.toggle('on');
-  });
+  types.forEach(c=>{c.onclick=()=>c.classList.toggle('on');});
 }
 function onCalC(){
   if(!cfg.calories)cfg.calories={goal:2000};
@@ -1147,7 +1256,6 @@ function renderMlList(){
 </div>`;
   }).join('');
 }
-
 function editMl(i){
   const m=cfg.meals[i];
   editMlIdx=i;
@@ -1157,14 +1265,11 @@ function editMl(i){
   pendIco.nml=m.icon||'🥗';
   document.getElementById('nml-ico').textContent=pendIco.nml;
   const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);
-  document.querySelectorAll('#nml-types .dchip').forEach(c=>{
-    c.classList.toggle('on', ts.includes(c.dataset.t));
-  });
+  document.querySelectorAll('#nml-types .dchip').forEach(c=>{c.classList.toggle('on', ts.includes(c.dataset.t));});
   document.getElementById('btn-add-ml').textContent='💾 Speichern';
   document.getElementById('ml-form-title').textContent='Eintrag bearbeiten';
   document.getElementById('ml-form-title').scrollIntoView({behavior:'smooth'});
 }
-
 function addMl(){
   const name=document.getElementById('nml-name').value.trim();
   const types=[...document.querySelectorAll('#nml-types .dchip.on')].map(c=>c.dataset.t);
@@ -1183,20 +1288,17 @@ function addMl(){
     showToast('🥗 Eintrag hinzugefügt');
   }
   saveCfg();
-  document.getElementById('nml-name').value='';
-  document.getElementById('nml-cals').value='';
-  document.getElementById('nml-desc').value='';
+  document.getElementById('nml-name').value='';document.getElementById('nml-cals').value='';document.getElementById('nml-desc').value='';
   document.querySelectorAll('#nml-types .dchip').forEach(c=>c.classList.remove('on'));
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();
 }
-
 function delMl(i){
   if(!confirm('Mahlzeit wirklich löschen?'))return;
   cfg.meals.splice(i,1);saveCfg();renderMlList();
 }
-function updMlGrp(i,v){cfg.meals[i].groupId=v||null;saveCfg();}
 
+// ══ ICON PICKER ══
 function openIP(target){
   ipt=target;
   document.getElementById('igrid').innerHTML=ICONS.map(ic=>`<div class="iopt" onclick="pickIC('${ic}')">${ic}</div>`).join('');
@@ -1225,6 +1327,7 @@ loadAll();
 renderThreePages();
 initSwipe();
 initItemSwipes();
+initCalSwipe();
 </script>
 </body>
 </html>
