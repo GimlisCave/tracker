@@ -53,6 +53,7 @@
     <div class="mcard" onclick="goSub('ov-ex')"><div class="mcard-ico">🏋️</div><div class="mcard-txt"><b>Übungen</b><small>Sets, Wiederholungen, Gruppe</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-meals')"><div class="mcard-ico">🥗</div><div class="mcard-txt"><b>Mahlzeiten</b><small>Kalorien, Beschreibung, Mealtime</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-data')"><div class="mcard-ico">💾</div><div class="mcard-txt"><b>Daten</b><small>Export & Import</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-smoke')"><div class="mcard-ico">🚬</div><div class="mcard-txt"><b>Rauchen</b><small>Tagesziel Zigaretten</small></div><div class="mcard-arr">›</div></div>
   </div>
 </div>
 
@@ -73,7 +74,6 @@
       <h3>Ziel & Glas</h3>
       <div class="frow"><label>Tagesziel (ml)</label><input class="fi num" type="number" id="s-goal" min="500" max="15000" step="100" oninput="onWC()"></div>
       <div class="frow"><label>Glasgröße (ml)</label><input class="fi num" type="number" id="s-gml" min="50" max="2000" step="50" oninput="onWC()"></div>
-      <div class="frow"><label>Glas-Icon</label><span id="s-gico" class="itap" onclick="openIP('glass')">🥤</span></div>
       <div class="wnote" id="wnote"></div>
     </section>
   </div>
@@ -103,6 +103,12 @@
       <div class="aform">
         <div class="arow"><span id="nex-ico" class="itap" onclick="openIP('nex')">🏋️</span><input class="fi flex" type="text" id="nex-name" placeholder="Übungsname..."></div>
         <div class="arow"><input class="fi" type="number" id="nex-sets" placeholder="Sets" min="1" max="20" style="flex:1"><input class="fi" type="number" id="nex-max" placeholder="Max Reps" min="1" max="999" style="flex:1"></div>
+        <div class="arow" style="align-items:center;gap:10px;padding:6px 0">
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;flex:1">
+            <input type="checkbox" id="nex-onearm" style="width:16px;height:16px;accent-color:var(--accent2);cursor:pointer">
+            Einarmig (R/L pro Satz)
+          </label>
+        </div>
         <select class="fi full" id="nex-grp"></select>
         <button class="btn gr full" id="btn-add-ex" onclick="addEx()">+ Übung hinzufügen</button>
       </div>
@@ -164,6 +170,16 @@
   </div>
 </div>
 
+<div class="ov" id="ov-smoke">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-smoke')">‹</button><h2>🚬 Rauchen</h2></div>
+  <div class="mscroll">
+    <section>
+      <h3>Tagesziel</h3>
+      <div class="frow"><label>Max. Zigaretten</label><input class="fi num" type="number" id="s-smoke-goal" min="1" max="100" step="1" oninput="onSmokeC()" style="width:110px"></div>
+    </section>
+  </div>
+</div>
+
 <div class="ov" id="ov-data">
   <div class="ovhdr"><button class="back" onclick="backSub('ov-data')">‹</button><h2>💾 Daten</h2></div>
   <div class="mscroll">
@@ -212,7 +228,7 @@ const JS2D=[6,0,1,2,3,4,5];
 const ICONS = ['🍎','🍌','🍉','🍇','🍓','🫐','🍒','🍑','🍍','🥝','🥑','🥦','🥕','🌽','🥐','🍞','🥞','🧀','🥩','🍗','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🍫','🍬','🍭','🍮','🍯','🥤','🧃','🥛','☕','🍵','🧉','🏋️','🏃','🚶','🚴','🚵','🏊','🤽','🚣','🏄','🧗','🧘','🤸','🤺','🥊','🥋','💪','👟','⚽','🏀','🏈','⚾','🎾','🏐','🏉','🏓','🏸','🏒','🏏','⛳','🏹','🎿','🏂','⛸️','🛹','🛼'];
 const MONTH_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
-let cfg={water:{goalMl:2000,glassMl:250,icon:'🥤'},steps:{goal:10000},groups:[],exercises:[],meals:[],widgetOrder:null,hiddenWidgets:[]};
+let cfg={water:{goalMl:2000,glassMl:250,icon:'🫙'},steps:{goal:10000},groups:[],exercises:[],meals:[],smoke:{goal:20},widgetOrder:null,hiddenWidgets:[]};
 let logs={};
 let sortMode='default';
 let ipt=null;
@@ -232,6 +248,7 @@ const WIDGET_DEFS = [
   {id:'wf',label:'Übungen',icon:'🏋️'},
   {id:'wm',label:'Mahlzeiten',icon:'🥗'},
   {id:'wg',label:'Gewicht',icon:'⚖️'},
+  {id:'wsmk',label:'Rauchen',icon:'🚬'},
 ];
 
 function openWVis(){
@@ -459,14 +476,16 @@ function loadAll(){
 }
 
 function glog(key){
-  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[]};
+  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[],smoked:0,ew:{}};
+  if(logs[key].smoked===undefined)logs[key].smoked=0;
+  if(!logs[key].ew)logs[key].ew={};
   return logs[key];
 }
 
 // ══ WIDGET ORDER (global, gespeichert) ══
 // Speichert globale Reihenfolge als Array von Widget-Prefixen: ['ws','ww','wf','wm','wg']
 function getGlobalOrder(){
-  return cfg.widgetOrder && cfg.widgetOrder.length ? cfg.widgetOrder : ['ws','ww','wf','wm','wg'];
+  return cfg.widgetOrder && cfg.widgetOrder.length ? cfg.widgetOrder : ['ws','ww','wf','wm','wg','wsmk'];
 }
 function saveGlobalOrder(widgets){
   // widgets = NodeList oder Array von .widget Elementen
@@ -519,6 +538,7 @@ function buildPage(cid, d){
   widgetMap['wf'] = dayExs.length ? mkFitness(log, dayExs, key) : null;
   widgetMap['wm'] = (dayMls.length || (log.cm && log.cm.length)) ? mkMeals(log, dayMls, key) : null;
   widgetMap['wg'] = mkWeight(log, key);
+  widgetMap['wsmk'] = mkSmoke(log, key);
 
   // Globale Reihenfolge anwenden
   const order = getGlobalOrder();
@@ -538,7 +558,7 @@ function buildPage(cid, d){
 
   c.appendChild(wlist);
 
-  const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key];
+  const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key, 'wsmk-'+key];
   wlist.querySelectorAll('.widget').forEach(w => w.classList.toggle('open', openIds.includes(w.id)));
 
   applySort(key);
@@ -547,11 +567,14 @@ function buildPage(cid, d){
 
 function dowFromDate(d){return JS2D[d.getDay()];}
 
-// Filtert nach aktiven Gruppen UND Wochentag
+// Filtert nach aktiven Gruppen UND Wochentag UND addedAt (nur heute+Zukunft)
 function forDayKey(arr, key) {
   const d = new Date(key);
   const dow = JS2D[d.getDay()];
+  const todayKey = toKey(new Date());
   return arr.filter(it => {
+    // addedAt-Check: nur ab dem Tag anzeigen, an dem hinzugefügt wurde
+    if(it.addedAt && key < it.addedAt) return false;
     if (!it.groupId) return true;
     const g = cfg.groups.find(g => g.id === it.groupId);
     if (!g) return true;
@@ -569,7 +592,7 @@ function mkWater(log,ng,key){
   w.className='widget open'+(pct>=100?' done':'');w.id='ww-'+key;w.dataset.o=0;
   w.innerHTML=`<div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('ww-${key}','${key}')">
-      <div class="wico wt" style="background:rgba(96,200,240,0.2)">${cfg.water.icon}</div>
+      <div class="wico wt" style="background:rgba(96,200,240,0.2)">💧</div>
       <div class="wtit"><b>Wasser</b><small>${f}/${ng} Gläser · ${pct}%</small></div>
       <div class="wchev">▾</div></div>
     <div class="wbody">
@@ -577,7 +600,7 @@ function mkWater(log,ng,key){
         <div class="plbl"><span>${ml} ml</span><span>${cfg.water.goalMl} ml</span></div></div>
       <div class="glasses">${log.wf.map((v,i)=>`
         <div class="gbtn ${v?'on':''}" onclick="tgl(${i},'${key}')">
-          <span>${v?'💧':cfg.water.icon}</span><small>${cfg.water.glassMl}ml</small>
+          <span>${v?'💧':'🫙'}</span><small>${cfg.water.glassMl}ml</small>
         </div>`).join('')}
       </div></div>`;
   return w;
@@ -628,7 +651,12 @@ function setWeight(val, key) {
   const log = glog(key);
   log.wg = num;
   saveLogs();
-  renderThreePages();
+  const wg = document.getElementById('wg-'+key);
+  if(wg){
+    wg.classList.toggle('done', num > 0);
+    const sub = wg.querySelector('.wtit small');
+    if(sub) sub.textContent = num > 0 ? num.toLocaleString('de-DE') + ' kg' : 'Eintragen...';
+  }
 }
 
 function mkWeight(log, key) {
@@ -643,8 +671,9 @@ function mkWeight(log, key) {
     else if (diff < 0){diffText=`${diff} kg`;diffClass="minus";}
     else{diffText="±0 kg";}
   }
+  const isDone = curWeight > 0;
   const w = document.createElement('div');
-  w.className = 'widget open';w.id = 'wg-' + key;w.dataset.o = 3;
+  w.className = 'widget open'+(isDone?' done':'');w.id = 'wg-' + key;w.dataset.o = 3;
   w.innerHTML = `
     <div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wg-${key}','${key}')">
@@ -668,19 +697,99 @@ function mkWeight(log, key) {
   return w;
 }
 
+function mkSmoke(log, key) {
+  if(!cfg.smoke) cfg.smoke = {goal:20};
+  const goal = cfg.smoke.goal || 20;
+  const smoked = log.smoked || 0;
+  const pct = Math.min(100, Math.round(smoked / goal * 100));
+  const isDone = smoked >= goal;
+  const w = document.createElement('div');
+  w.className = 'widget open' + (isDone ? ' done' : ''); w.id = 'wsmk-' + key; w.dataset.o = 4;
+  let cigHtml = '';
+  for(let i = 0; i < goal; i++) {
+    cigHtml += `<div class="gbtn ${i < smoked ? 'on smk-on' : ''}" onclick="tglSmoke(${i},'${key}')">
+      <span>${i < smoked ? '🚬' : '🚬'}</span><small>${i+1}</small>
+    </div>`;
+  }
+  w.innerHTML = `<div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('wsmk-${key}','${key}')">
+      <div class="wico" style="background:rgba(200,120,60,0.2)">🚬</div>
+      <div class="wtit"><b>Rauchen</b><small>${smoked}/${goal} Zigaretten · ${pct}%</small></div>
+      <div class="wchev">▾</div></div>
+    <div class="wbody">
+      <div class="prog"><div class="pbar"><div class="pfill smk" style="width:${pct}%"></div></div>
+        <div class="plbl"><span>${smoked} geraucht</span><span>Ziel: ${goal}</span></div></div>
+      <div class="glasses smk-grid">${cigHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div class="step-btn" onclick="addSmoke(-1,'${key}')"><span>−1</span><small>Weniger</small></div>
+        <div class="step-btn" onclick="addSmoke(1,'${key}')"><span>+1</span><small>Mehr</small></div>
+        <div class="step-btn" onclick="setSmokeDirect(0,'${key}')"><span>✕</span><small>Reset</small></div>
+      </div>
+    </div>`;
+  return w;
+}
+function tglSmoke(i, key) {
+  const log = glog(key);
+  const cur = log.smoked || 0;
+  // Klick auf bereits gerauchte → auf i setzen (toggle last)
+  if(i < cur) { log.smoked = i; }
+  else { log.smoked = i + 1; }
+  saveLogs(); patchSmoke(log, key);
+}
+function addSmoke(n, key) {
+  const log = glog(key);
+  log.smoked = Math.max(0, (log.smoked||0) + n);
+  saveLogs(); patchSmoke(log, key);
+}
+function setSmokeDirect(val, key) {
+  const log = glog(key);
+  log.smoked = Math.max(0, val);
+  saveLogs(); patchSmoke(log, key);
+}
+function patchSmoke(log, key) {
+  const goal = cfg.smoke ? cfg.smoke.goal||20 : 20;
+  const smoked = log.smoked || 0;
+  const pct = Math.min(100, Math.round(smoked/goal*100));
+  const wsmk = document.getElementById('wsmk-'+key); if(!wsmk) return;
+  wsmk.querySelector('.wtit small').textContent = `${smoked}/${goal} Zigaretten · ${pct}%`;
+  const pf = wsmk.querySelector('.pfill.smk'); if(pf) pf.style.width = pct+'%';
+  wsmk.querySelector('.plbl').children[0].textContent = smoked+' geraucht';
+  wsmk.classList.toggle('done', smoked >= goal);
+  wsmk.querySelectorAll('.gbtn').forEach((btn, i) => {
+    btn.classList.toggle('on', i < smoked);
+    btn.classList.toggle('smk-on', i < smoked);
+  });
+}
+
 function countDone(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length;}
+function countDoneEx(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length;}
 
 function mkFitness(log, exs, key) {
   let tot = 0, done = 0;
-  exs.forEach(ex => { tot += ex.sets; done += countDone(log, ex); });
+  exs.forEach(ex => {
+    const effectiveSets = ex.oneArm ? ex.sets * 2 : ex.sets;
+    tot += effectiveSets;
+    done += countDoneEx(log, ex);
+  });
   const pct = tot > 0 ? Math.round(done / tot * 100) : 0;
-  const dex = exs.filter(ex => countDone(log, ex) >= ex.sets).length;
+  const dex = exs.filter(ex => countDoneEx(log, ex) >= (ex.oneArm ? ex.sets*2 : ex.sets)).length;
   let html = '';
   exs.forEach(ex => {
-    const vals = log.ed[ex.id] || []; const d = countDone(log, ex); let sh = '';
-    for (let s = 0; s < ex.sets; s++) {
+    const effectiveSets = ex.oneArm ? ex.sets * 2 : ex.sets;
+    const vals = log.ed[ex.id] || [];
+    const exWeight = (log.ew && log.ew[ex.id]) || '';
+    const d = countDoneEx(log, ex);
+    let sh = '';
+    for (let s = 0; s < effectiveSets; s++) {
       const v = vals[s] ?? ''; const isDone = Number(v) > 0;
-      sh += `<div class="spill ${isDone ? 'done' : ''}"><span>S${s + 1}:</span>
+      let label;
+      if(ex.oneArm) {
+        const round = Math.floor(s/2)+1;
+        label = (s%2===0 ? 'R' : 'L') + round;
+      } else {
+        label = 'S'+(s+1);
+      }
+      sh += `<div class="spill ${isDone ? 'done' : ''}"><span>${label}:</span>
   <input type="number" value="${v}" placeholder="0" min="0" max="999"
     oninput="setRep('${ex.id}',${s},this.value,'${key}')"
     onfocus="if(this.value=='0')this.value=''"
@@ -692,9 +801,16 @@ function mkFitness(log, exs, key) {
     html += `<div class="exitem">
       <div class="extop">
         <span style="font-size:16px">${ex.icon || '🏋️'}</span>
-        <span class="exname">${ex.name}</span>
-        <span class="exbadge">${d}/${ex.sets} ✓</span>
+        <span class="exname">${ex.name}${ex.oneArm ? ' <span style="font-size:9px;padding:1px 5px;border-radius:99px;background:rgba(96,200,240,.15);color:var(--accent2)">einarmig</span>' : ''}</span>
+        <span class="exbadge">${d}/${effectiveSets} ✓</span>
         ${g ? `<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:${g.color}22;color:${g.color};font-weight:600">${g.name}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted)">⚖️ Gewicht:</span>
+        <input type="number" step="0.5" value="${exWeight}" placeholder="kg" min="0"
+          oninput="setExWeight('${ex.id}',this.value,'${key}')"
+          style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--text);font-size:12px;font-family:inherit;outline:none;text-align:center" inputmode="decimal">
+        <span style="font-size:11px;color:var(--muted)">kg</span>
       </div>
       <div class="srow">${sh}</div></div>`;
   });
@@ -720,20 +836,32 @@ function setRep(exId,si,val,key){
   log.ed[exId][si]=val;saveLogs();patchFitness(log,key);
 }
 
+function setExWeight(exId, val, key) {
+  const log = glog(key);
+  if(!log.ew) log.ew = {};
+  log.ew[exId] = val;
+  saveLogs();
+}
+
 function patchFitness(log,key){
   const dayExs=forDayKey(cfg.exercises,key);
   let tot=0,done=0;
-  dayExs.forEach(ex=>{tot+=ex.sets;done+=countDone(log,ex);});
+  dayExs.forEach(ex=>{
+    const eff = ex.oneArm ? ex.sets*2 : ex.sets;
+    tot+=eff;
+    done+=countDoneEx(log,ex);
+  });
   const pct=tot>0?Math.round(done/tot*100):0;
   const wf=document.getElementById('wf-'+key);if(!wf)return;
-  const doneEx=dayExs.filter(ex=>countDone(log,ex)>=ex.sets).length;
+  const doneEx=dayExs.filter(ex=>countDoneEx(log,ex)>=(ex.oneArm?ex.sets*2:ex.sets)).length;
   const sub=wf.querySelector('.wtit small');if(sub)sub.textContent=`${doneEx}/${dayExs.length} Einheiten · ${done}/${tot} Sätze`;
   const pf=wf.querySelector('.pfill.f');if(pf)pf.style.width=pct+'%';
   const pl=wf.querySelector('.plbl');if(pl)pl.children[0].textContent=done+' erledigt';
   wf.querySelectorAll('.exitem').forEach((item,ei)=>{
     const ex=dayExs[ei];if(!ex)return;
-    const d=countDone(log,ex);
-    const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${ex.sets} ✓`;
+    const eff=ex.oneArm?ex.sets*2:ex.sets;
+    const d=countDoneEx(log,ex);
+    const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${eff} ✓`;
     const vals=log.ed[ex.id]||[];
     item.querySelectorAll('.spill').forEach((p,si)=>{p.classList.toggle('done', Number(vals[si])>0);});
   });
@@ -961,7 +1089,7 @@ function renderCalPage(pageId, year, month){
       const fPct=()=>{
         const dayExs=forDayKey(cfg.exercises,k);
         let tot=0,done=0;
-        dayExs.forEach(ex=>{tot+=ex.sets;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});
+        dayExs.forEach(ex=>{const eff=ex.oneArm?ex.sets*2:ex.sets;tot+=eff;done+=(log.ed&&log.ed[ex.id]?log.ed[ex.id].filter(v=>Number(v)>0).length:0);});
         return tot?Math.min(100,Math.round(done/tot*100)):0;
       };
       const mPct=()=>{
@@ -1020,6 +1148,7 @@ function goSub(id){
   else if(id==='ov-groups')initGroups();
   else if(id==='ov-ex')initEx();
   else if(id==='ov-meals')initMls();
+  else if(id==='ov-smoke')initSmoke();
   document.getElementById(id).classList.add('open');
 }
 function backSub(id){document.getElementById(id).classList.remove('open');document.getElementById('ov-menu').classList.add('open');}
@@ -1027,7 +1156,6 @@ function backSub(id){document.getElementById(id).classList.remove('open');docume
 function initWater(){
   document.getElementById('s-goal').value=cfg.water.goalMl;
   document.getElementById('s-gml').value=cfg.water.glassMl;
-  document.getElementById('s-gico').textContent=cfg.water.icon;
   updWNote();
 }
 function onWC(){
@@ -1043,6 +1171,16 @@ function updWNote(){
 }
 function initSteps(){document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;}
 function onStepsC(){cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;saveCfg();}
+
+function initSmoke(){
+  if(!cfg.smoke)cfg.smoke={goal:20};
+  document.getElementById('s-smoke-goal').value=cfg.smoke.goal||20;
+}
+function onSmokeC(){
+  if(!cfg.smoke)cfg.smoke={goal:20};
+  cfg.smoke.goal=parseInt(document.getElementById('s-smoke-goal').value)||20;
+  saveCfg();
+}
 
 // ══ GRUPPEN ══
 function initGroups(){renderGrpList();renderDChips('ng-days',[]);}
@@ -1135,7 +1273,7 @@ function renderExList(){
   <div class="sit-content crow" data-del="delEx(${i})" data-edit="editEx(${i})">
     <div class="ctop">
       <span class="cico" onclick="openIP('ex_${i}'); event.stopPropagation()">${ex.icon||'🏋️'}</span>
-      <span class="cname">${ex.name}</span>
+      <span class="cname">${ex.name}${ex.oneArm?' <span style="font-size:9px;padding:1px 5px;border-radius:99px;background:rgba(96,200,240,.15);color:var(--accent2)">einarmig</span>':''}</span>
       <div class="sort-controls">
         <span class="sort-btn" onclick="event.stopPropagation();moveEx(${i},-1)">▲</span>
         <span class="sort-btn" onclick="event.stopPropagation();moveEx(${i},1)">▼</span>
@@ -1151,6 +1289,7 @@ function editEx(i){
   document.getElementById('nex-sets').value=ex.sets||3;
   document.getElementById('nex-max').value=ex.maxReps||10;
   document.getElementById('nex-grp').value=ex.groupId||'';
+  document.getElementById('nex-onearm').checked=!!ex.oneArm;
   pendIco.nex=ex.icon||'🏋️';
   document.getElementById('nex-ico').textContent=pendIco.nex;
   document.getElementById('btn-add-ex').textContent='💾 Speichern';
@@ -1162,19 +1301,21 @@ function addEx(){
   const sets=parseInt(document.getElementById('nex-sets').value)||3;
   const maxReps=parseInt(document.getElementById('nex-max').value)||10;
   const groupId=document.getElementById('nex-grp').value||null;
+  const oneArm=document.getElementById('nex-onearm').checked;
   if(!name){showToast('⚠️ Name fehlt');return;}
   if(editExIdx>=0){
-    cfg.exercises[editExIdx]={...cfg.exercises[editExIdx],icon:pendIco.nex,name,sets,maxReps,groupId};
+    cfg.exercises[editExIdx]={...cfg.exercises[editExIdx],icon:pendIco.nex,name,sets,maxReps,groupId,oneArm};
     editExIdx=-1;
     document.getElementById('btn-add-ex').textContent='+ Übung hinzufügen';
     document.getElementById('ex-form-title').textContent='Übung hinzufügen';
     showToast('🏋️ Übung gespeichert');
   }else{
-    cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId});
+    cfg.exercises.push({id:'ex'+Date.now(),icon:pendIco.nex,name,sets,maxReps,groupId,oneArm,addedAt:toKey(new Date())});
     showToast('🏋️ Übung hinzugefügt');
   }
   saveCfg();
   document.getElementById('nex-name').value='';document.getElementById('nex-sets').value='';document.getElementById('nex-max').value='';
+  document.getElementById('nex-onearm').checked=false;
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
   renderExList();
 }
@@ -1246,7 +1387,7 @@ function addMl(){
     document.getElementById('ml-form-title').textContent='Eintrag hinzufügen';
     showToast('🥗 Eintrag gespeichert');
   }else{
-    cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc});
+    cfg.meals.push({id:'m'+Date.now(),icon:pendIco.nml,types,cals,name,desc,addedAt:toKey(new Date())});
     showToast('🥗 Eintrag hinzugefügt');
   }
   saveCfg();
@@ -1270,8 +1411,7 @@ function closeIP(){document.getElementById('ipov').classList.remove('open');ipt=
 document.getElementById('ipov').addEventListener('click',function(e){if(e.target===this)closeIP();});
 function pickIC(ic){
   if(!ipt){closeIP();return;}
-  if(ipt==='glass'){cfg.water.icon=ic;document.getElementById('s-gico').textContent=ic;saveCfg();}
-  else if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
+  if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
   else if(ipt==='nml'){pendIco.nml=ic;document.getElementById('nml-ico').textContent=ic;}
   else if(ipt==='ch'){pendIco.ch=ic;document.getElementById('ch-ico').textContent=ic;}
   else if(ipt.startsWith('ex_')){const i=+ipt.split('_')[1];cfg.exercises[i].icon=ic;saveCfg();renderExList();}
