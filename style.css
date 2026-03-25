@@ -347,3 +347,13 @@ body, input, textarea, button, select, h1 {
 
 /* Cal swipe */
 #ov-cal .cal-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* Rauchen Widget */
+.widget[id^="wsmk-"] {
+  background: rgba(180, 100, 40, 0.12) !important;
+  border: 1px solid rgba(180, 100, 40, 0.25);
+}
+.pfill.smk { background: #e08040 !important; }
+.gbtn.smk-on { border-color: #e08040 !important; background: rgba(224,128,64,.15) !important; }
+.smk-grid .gbtn { opacity: 0.35; }
+.smk-grid .gbtn.smk-on { opacity: 1; }
