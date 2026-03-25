@@ -1606,7 +1606,7 @@ function renderStatsChips(){
       <span style="font-size:12px;font-weight:700;color:var(--accent2)">🏋️ Übungen <span style="font-weight:400;color:var(--muted)">${statsExVisible.size} aktiv</span></span>
       <span id="ex-acc-arrow" style="font-size:11px;color:var(--muted);transition:transform .2s">${cfg.exAccOpen?'▴':'▾'}</span>
     </div>
-    <div id="ex-acc-body" style="display:${cfg.exAccOpen?'block':'none'};padding:8px 10px 10px;border-top:1px solid var(--border)">
+    <div id="ex-acc-body" style="display:${cfg.exAccOpen?'block':'none'};padding:8px 10px 10px;border-top:1px solid var(--border);max-height:260px;overflow-y:auto">
       ${exMets.map(m=>`
         <label style="display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer;border-radius:6px">
           <input type="checkbox" ${statsExVisible.has(m.id)?'checked':''} onchange="toggleExMetric('${m.id}')"
