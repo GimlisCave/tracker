@@ -1537,7 +1537,7 @@ function showToast(msg){
 }
 
 // ══ STATISTIKEN ══
-const STAT_METRICS = [
+const STAT_METRICS_BASE = [
   {id:'water', label:'Wasser', color:'#60c8f0', unit:'%'},
   {id:'steps', label:'Schritte', color:'#f0d060', unit:'%'},
   {id:'fitness',label:'Übungen', color:'#f06060', unit:'%'},
@@ -1545,6 +1545,22 @@ const STAT_METRICS = [
   {id:'weight', label:'Gewicht',  color:'#a060f0', unit:'kg'},
   {id:'smoke',  label:'Rauchen',  color:'#e08040', unit:'Zig.'},
 ];
+function getExerciseMetrics(){
+  if(!cfg.exercises||!cfg.exercises.length) return [];
+  const exColors=['#f06060','#f09060','#f0c060','#a0f060','#60f0b0','#60c8f0','#a060f0','#f060b0'];
+  return cfg.exercises.map((ex,i)=>{
+    const col=exColors[i%exColors.length];
+    const rows=[{id:'ex_kg_'+ex.id, label:(ex.icon||'🏋️')+' '+ex.name+' – kg', color:col, unit:'kg', exId:ex.id, exSub:'kg'}];
+    if(ex.oneArm){
+      rows.push({id:'ex_reps_R_'+ex.id, label:(ex.icon||'🏋️')+' '+ex.name+' – Reps R', color:col, unit:'', exId:ex.id, exSub:'repsR'});
+      rows.push({id:'ex_reps_L_'+ex.id, label:(ex.icon||'🏋️')+' '+ex.name+' – Reps L', color:col+'aa', unit:'', exId:ex.id, exSub:'repsL'});
+    } else {
+      rows.push({id:'ex_reps_'+ex.id, label:(ex.icon||'🏋️')+' '+ex.name+' – Reps (Ø)', color:col, unit:'', exId:ex.id, exSub:'reps'});
+    }
+    return rows;
+  }).flat();
+}
+function getAllMetrics(){ return [...STAT_METRICS_BASE, ...getExerciseMetrics()]; }
 let statsPeriod = 7;
 let statsVisible = new Set(['water','steps','fitness','meals','weight','smoke']);
 
@@ -1572,11 +1588,21 @@ function setStatsPeriod(n, el){
 
 function renderStatsChips(){
   const el = document.getElementById('stats-metric-chips');
-  el.innerHTML = STAT_METRICS.map(m=>`
+  const base = STAT_METRICS_BASE.map(m=>`
     <div class="schip ${statsVisible.has(m.id)?'active':''}"
       style="${statsVisible.has(m.id)?`border-color:${m.color};color:${m.color};background:${m.color}18`:''}"
       onclick="toggleStatMetric('${m.id}',this,'${m.color}')">${m.label}</div>
   `).join('');
+  const exMets = getExerciseMetrics();
+  const exPart = exMets.length ? `
+    <div style="width:100%;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 2px 2px">🏋️ Übungen</div>
+    ${exMets.map(m=>`
+      <div class="schip ${statsVisible.has(m.id)?'active':''}"
+        style="${statsVisible.has(m.id)?`border-color:${m.color};color:${m.color};background:${m.color}18`:''}"
+        onclick="toggleStatMetric('${m.id}',this,'${m.color}')">${m.label}</div>
+    `).join('')}
+  ` : '';
+  el.innerHTML = base + exPart;
 }
 
 function toggleStatMetric(id, el, color){
@@ -1623,6 +1649,32 @@ function getStatValue(key, metricId){
     return Math.min(100,Math.round(c/goal*100));
   }
   if(metricId==='weight') return log.wg>0?log.wg:null;
+  if(metricId.startsWith('ex_')){
+    const m2=getAllMetrics().find(x=>x.id===metricId);
+    if(!m2) return null;
+    const exId=m2.exId, sub=m2.exSub;
+    const ex=cfg.exercises&&cfg.exercises.find(e=>e.id===exId);
+    if(!ex) return null;
+    if(sub==='kg'){
+      const w=log.ew&&log.ew[exId];
+      return (w!==undefined&&w!==''&&Number(w)>0)?Number(w):null;
+    }
+    const vals=log.ed&&log.ed[exId]?log.ed[exId]:[];
+    if(!vals.length) return null;
+    if(sub==='reps'){
+      const done=vals.filter(v=>Number(v)>0).map(Number);
+      return done.length?Math.round(done.reduce((a,b)=>a+b,0)/done.length):null;
+    }
+    if(sub==='repsR'){
+      const rSlots=vals.filter((_,i)=>i%2===0).map(Number).filter(v=>v>0);
+      return rSlots.length?Math.round(rSlots.reduce((a,b)=>a+b,0)/rSlots.length):null;
+    }
+    if(sub==='repsL'){
+      const lSlots=vals.filter((_,i)=>i%2===1).map(Number).filter(v=>v>0);
+      return lSlots.length?Math.round(lSlots.reduce((a,b)=>a+b,0)/lSlots.length):null;
+    }
+    return null;
+  }
   if(metricId==='smoke'){
     const arr=log.smokedArr||[];
     const smoked=arr.filter(Boolean).length;
@@ -1641,7 +1693,7 @@ function renderStatsCharts(){
     days.push({key:toKey(d), label:d.getDate()+'.'+(d.getMonth()+1)+'.'});
   }
 
-  STAT_METRICS.forEach(m=>{
+  getAllMetrics().forEach(m=>{
     if(!statsVisible.has(m.id)) return;
     const vals = days.map(d=>({label:d.label, val:getStatValue(d.key,m.id)}));
     const hasData = vals.some(v=>v.val!==null);
@@ -1706,6 +1758,10 @@ function renderStatsCharts(){
     if(m.id==='smoke'){
       vMin=0;
       vMax=Math.max(...all,cfg.smoke&&cfg.smoke.goal||20)+2;
+    }
+    if(m.id&&m.id.startsWith('ex_')){
+      vMin=Math.max(0,Math.min(...all)-2);
+      vMax=Math.max(...all)+3;
     }
     const range=vMax-vMin||1;
 
