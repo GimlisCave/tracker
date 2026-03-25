@@ -1624,10 +1624,9 @@ function getStatValue(key, metricId){
   }
   if(metricId==='weight') return log.wg>0?log.wg:null;
   if(metricId==='smoke'){
-    const goal=cfg.smoke&&cfg.smoke.goal||20;
     const arr=log.smokedArr||[];
     const smoked=arr.filter(Boolean).length;
-    return Math.round(Math.max(0,goal-smoked)/goal*100);
+    return smoked>0?smoked:null;
   }
   return null;
 }
@@ -1700,9 +1699,13 @@ function renderStatsCharts(){
     const numVals = vals.map(v=>v.val!==null?v.val:null);
     const all = numVals.filter(v=>v!==null);
     let vMin=0, vMax=100;
-    if(m.id==='weight'||m.id==='smoke'){
+    if(m.id==='weight'){
       vMin=Math.max(0,Math.min(...all)-5);
       vMax=Math.max(...all)+5;
+    }
+    if(m.id==='smoke'){
+      vMin=0;
+      vMax=Math.max(...all,cfg.smoke&&cfg.smoke.goal||20)+2;
     }
     const range=vMax-vMin||1;
 
@@ -1717,6 +1720,19 @@ function renderStatsCharts(){
       const y=yOf(pct);
       ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+cw,y);ctx.stroke();
     });
+
+    // Goal line for smoke
+    if(m.id==='smoke'){
+      const smokeGoal = cfg.smoke&&cfg.smoke.goal||20;
+      if(smokeGoal>=vMin&&smokeGoal<=vMax){
+        const gy=yOf(smokeGoal);
+        ctx.setLineDash([4,3]);
+        ctx.strokeStyle=m.color+'88';
+        ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+cw,gy);ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
 
     // Fill under line
     const pts=[];
