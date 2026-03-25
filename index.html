@@ -497,8 +497,13 @@ function loadAll(){
 }
 
 function glog(key){
-  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[],smoked:0,ew:{}};
-  if(logs[key].smoked===undefined)logs[key].smoked=0;
+  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[],smokedArr:[],ew:{}};
+  // Migration: altes smoked (Zahl) → smokedArr (Array)
+  if(!logs[key].smokedArr){
+    const n=logs[key].smoked||0;
+    logs[key].smokedArr=Array.from({length:n},()=>true);
+    delete logs[key].smoked;
+  }
   if(!logs[key].ew)logs[key].ew={};
   return logs[key];
 }
@@ -622,20 +627,35 @@ function mkWater(log,ng,key){
       <div class="glasses">${log.wf.map((v,i)=>`
         <div class="gbtn ${v?'on':''}" onclick="tgl(${i},'${key}')">
           <span>${v?'💧':'🥤'}</span><small>${cfg.water.glassMl}ml</small>
-        </div>`).join('')}
+        </div>`).join('')}<div class="gbtn extra-add" onclick="addExtraGlass('${key}')"><span>＋</span><small>extra</small></div>
       </div></div>`;
   return w;
 }
 function tgl(i,key){
   const l=glog(key);
-  const cur=l.wf.filter(Boolean).length;
-  if(i<cur){
-    // Klick auf bereits gefülltes → bis i-1 füllen (toggle letzten weg)
-    for(let x=0;x<l.wf.length;x++) l.wf[x]=x<i;
+  const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);
+  if(i >= ng) {
+    // Extra-Slot: einzeln togglen, wenn abgewählt → diesen Slot entfernen
+    l.wf[i] = !l.wf[i];
+    if(!l.wf[i]) l.wf.splice(i, 1);
   } else {
-    // Klick auf leeres → alle bis i füllen
-    for(let x=0;x<l.wf.length;x++) l.wf[x]=x<=i;
+    // Standard-Slot: kumulativ
+    const lastActive = l.wf.slice(0, ng).lastIndexOf(true);
+    if(lastActive === i) {
+      // letzter aktiver → alle aus
+      for(let x=0;x<ng;x++) l.wf[x]=false;
+    } else {
+      // sonst: alle bis i an, Rest aus
+      for(let x=0;x<ng;x++) l.wf[x]=x<=i;
+    }
+    // Extras (ab ng) bleiben unberührt
   }
+  saveLogs();buildPage('page-curr',activeDate);
+}
+
+function addExtraGlass(key){
+  const l=glog(key);
+  l.wf.push(true);
   saveLogs();buildPage('page-curr',activeDate);
 }
 
@@ -732,34 +752,68 @@ function mkWeight(log, key) {
 function mkSmoke(log, key) {
   if(!cfg.smoke) cfg.smoke = {goal:20};
   const goal = cfg.smoke.goal || 20;
-  const smoked = log.smoked || 0;
-  const pct = Math.min(100, Math.round(smoked / goal * 100));
-  const isDone = smoked >= goal;
+  if(!log.smokedArr) log.smokedArr = [];
+  const arr = log.smokedArr;
+  const smoked = arr.filter(Boolean).length;
+  const remaining = Math.max(0, goal - smoked);
+  const pct = Math.round(remaining / goal * 100);
+  const isDone = smoked === 0;
   const w = document.createElement('div');
   w.className = 'widget open' + (isDone ? ' done' : ''); w.id = 'wsmk-' + key; w.dataset.o = 4;
   let cigHtml = '';
-  for(let i = 0; i < goal; i++) {
-    cigHtml += `<div class="gbtn ${i < smoked ? 'on smk-on' : ''}" onclick="tglSmoke(${i},'${key}')">
-      <span>${i < smoked ? '🚬' : '🚬'}</span><small>${i+1}</small>
-    </div>`;
+  for(let i = 0; i < arr.length || i < goal; i++) {
+    const isSmoked = !!arr[i];
+    if(i < goal) {
+      cigHtml += `<div class="gbtn ${isSmoked ? 'on smk-on' : ''}" onclick="tglSmoke(${i},'${key}')">
+        <span>${isSmoked ? '🚬' : '🚭'}</span><small>${i+1}</small>
+      </div>`;
+    } else {
+      // Extra (über goal)
+      cigHtml += `<div class="gbtn on smk-on" onclick="tglSmoke(${i},'${key}')">
+        <span>🚬</span><small>+${i-goal+1}</small>
+      </div>`;
+    }
   }
+  const extra = arr.length > goal ? arr.filter(Boolean).length - Math.min(smoked, goal) : 0;
+  const subtitle = smoked === 0 ? `Keine geraucht · 100%`
+    : arr.length > goal ? `${smoked} geraucht (+${arr.length-goal} extra) · 0%`
+    : `${smoked}/${goal} geraucht · ${pct}%`;
   w.innerHTML = `<div class="drgh"><span>⠿</span></div>
     <div class="whdr" onclick="twid('wsmk-${key}','${key}')">
       <div class="wico" style="background:rgba(200,120,60,0.2)">🚬</div>
-      <div class="wtit"><b>Rauchen</b><small>${smoked}/${goal} Zigaretten · ${pct}%</small></div>
+      <div class="wtit"><b>Rauchen</b><small>${subtitle}</small></div>
       <div class="wchev">▾</div></div>
     <div class="wbody">
       <div class="prog"><div class="pbar"><div class="pfill smk" style="width:${pct}%"></div></div>
-        <div class="plbl"><span>${smoked} geraucht</span><span>Ziel: ${goal}</span></div></div>
-      <div class="glasses smk-grid">${cigHtml}</div>`;
+        <div class="plbl"><span>${remaining} übrig</span><span>Limit: ${goal}</span></div></div>
+      <div class="glasses smk-grid">${cigHtml}<div class="gbtn extra-add" onclick="addExtraSmoke('${key}')"><span>＋</span><small>extra</small></div></div>
+    </div>`;
   return w;
 }
 function tglSmoke(i, key) {
   const log = glog(key);
-  const cur = log.smoked || 0;
-  // Klick auf bereits gerauchte → auf i setzen (toggle last)
-  if(i < cur) { log.smoked = i; }
-  else { log.smoked = i + 1; }
+  const goal = cfg.smoke ? cfg.smoke.goal||20 : 20;
+  if(!log.smokedArr) log.smokedArr = [];
+  const arr = log.smokedArr;
+  if(i >= goal) {
+    // Extra-Slot: einzeln togglen, wenn abgewählt → diesen Slot entfernen
+    if(i < arr.length) {
+      arr[i] = !arr[i];
+      if(!arr[i]) arr.splice(i, 1);
+    }
+  } else {
+    // Standard-Slot: kumulativ
+    while(arr.length < goal) arr.push(false);
+    const lastActive = arr.slice(0, goal).lastIndexOf(true);
+    if(lastActive === i) {
+      // letzter aktiver → alle aus
+      for(let x=0;x<goal;x++) arr[x]=false;
+    } else {
+      // alle bis i an, Rest aus
+      for(let x=0;x<goal;x++) arr[x]=x<=i;
+    }
+    // Extras (ab goal) bleiben unberührt
+  }
   saveLogs(); patchSmoke(log, key);
 }
 function addSmoke(n, key) {
@@ -772,19 +826,50 @@ function setSmokeDirect(val, key) {
   log.smoked = Math.max(0, val);
   saveLogs(); patchSmoke(log, key);
 }
+function addExtraSmoke(key) {
+  const log = glog(key);
+  if(!log.smokedArr) log.smokedArr = [];
+  const goal = cfg.smoke ? cfg.smoke.goal||20 : 20;
+  // Füge einen neuen Slot über dem Limit hinzu
+  const arr = log.smokedArr;
+  while(arr.length < goal) arr.push(false);
+  arr.push(true);
+  saveLogs(); patchSmoke(log, key);
+}
 function patchSmoke(log, key) {
   const goal = cfg.smoke ? cfg.smoke.goal||20 : 20;
-  const smoked = log.smoked || 0;
-  const pct = Math.min(100, Math.round(smoked/goal*100));
+  if(!log.smokedArr) log.smokedArr = [];
+  const arr = log.smokedArr;
+  const smoked = arr.filter(Boolean).length;
+  const remaining = Math.max(0, goal - smoked);
+  const pct = Math.round(remaining / goal * 100);
   const wsmk = document.getElementById('wsmk-'+key); if(!wsmk) return;
-  wsmk.querySelector('.wtit small').textContent = `${smoked}/${goal} Zigaretten · ${pct}%`;
+  const subtitle = smoked === 0 ? `Keine geraucht · 100%`
+    : arr.length > goal ? `${smoked} geraucht (+${arr.length-goal} extra) · 0%`
+    : `${smoked}/${goal} geraucht · ${pct}%`;
+  wsmk.querySelector('.wtit small').textContent = subtitle;
   const pf = wsmk.querySelector('.pfill.smk'); if(pf) pf.style.width = pct+'%';
-  wsmk.querySelector('.plbl').children[0].textContent = smoked+' geraucht';
-  wsmk.classList.toggle('done', smoked >= goal);
-  wsmk.querySelectorAll('.gbtn').forEach((btn, i) => {
-    btn.classList.toggle('on', i < smoked);
-    btn.classList.toggle('smk-on', i < smoked);
-  });
+  const plbl = wsmk.querySelector('.plbl');
+  if(plbl){ plbl.children[0].textContent = remaining+' übrig'; plbl.children[1].textContent = 'Limit: '+goal; }
+  wsmk.classList.toggle('done', smoked === 0);
+  const grid = wsmk.querySelector('.smk-grid');
+  if(grid){
+    let cigHtml = '';
+    for(let i = 0; i < arr.length || i < goal; i++) {
+      const isSmoked = !!arr[i];
+      if(i < goal) {
+        cigHtml += `<div class="gbtn ${isSmoked ? 'on smk-on' : ''}" onclick="tglSmoke(${i},'${key}')">
+          <span>${isSmoked ? '🚬' : '🚭'}</span><small>${i+1}</small>
+        </div>`;
+      } else {
+        cigHtml += `<div class="gbtn on smk-on" onclick="tglSmoke(${i},'${key}')">
+          <span>🚬</span><small>+${i-goal+1}</small>
+        </div>`;
+      }
+    }
+    cigHtml += `<div class="gbtn extra-add" onclick="addExtraSmoke('${key}')"><span>＋</span><small>extra</small></div>`;
+    grid.innerHTML = cigHtml;
+  }
 }
 
 function countDone(log,ex){return(log.ed[ex.id]||[]).filter(v=>Number(v)>0).length;}
@@ -1538,7 +1623,12 @@ function getStatValue(key, metricId){
     return Math.min(100,Math.round(c/goal*100));
   }
   if(metricId==='weight') return log.wg>0?log.wg:null;
-  if(metricId==='smoke') return (log.smoked||0)>0?log.smoked:null;
+  if(metricId==='smoke'){
+    const goal=cfg.smoke&&cfg.smoke.goal||20;
+    const arr=log.smokedArr||[];
+    const smoked=arr.filter(Boolean).length;
+    return Math.round(Math.max(0,goal-smoked)/goal*100);
+  }
   return null;
 }
 

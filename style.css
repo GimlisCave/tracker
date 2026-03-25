@@ -357,3 +357,11 @@ body, input, textarea, button, select, h1 {
 .gbtn.smk-on { border-color: #e08040 !important; background: rgba(224,128,64,.15) !important; }
 .smk-grid .gbtn { opacity: 0.35; }
 .smk-grid .gbtn.smk-on { opacity: 1; }
+/* ── +1 Extra Chip im Grid ── */
+.gbtn.extra-add {
+  border-style: dashed;
+  opacity: 0.55;
+  transition: opacity .15s;
+}
+.gbtn.extra-add:active { opacity: 1; }
+.gbtn.extra-add span { font-size: 20px; font-weight: 700; line-height: 1; }
