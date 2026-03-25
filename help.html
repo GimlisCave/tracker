@@ -48,9 +48,9 @@
   <!-- Zeitraum & Metrik-Chips -->
   <div style="flex-shrink:0;padding:10px 17px 0;display:flex;flex-direction:column;gap:8px">
     <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
-      <div class="schip active" id="sp-7"  onclick="setStatsPeriod(7,this)">7 Tage</div>
-      <div class="schip"        id="sp-14" onclick="setStatsPeriod(14,this)">14 Tage</div>
-      <div class="schip"        id="sp-30" onclick="setStatsPeriod(30,this)">30 Tage</div>
+      <div class="schip active" id="sp-7"   onclick="setStatsPeriod(7,this)">7 Tage</div>
+      <div class="schip"        id="sp-14"  onclick="setStatsPeriod(14,this)">14 Tage</div>
+      <div class="schip"        id="sp-30"  onclick="setStatsPeriod(30,this)">30 Tage</div>
       <div class="schip"        id="sp-365" onclick="setStatsPeriod(365,this)">1 Jahr</div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap" id="stats-metric-chips"></div>
@@ -70,11 +70,11 @@
   <div class="mcards">
     <div class="mcard" onclick="goSub('ov-steps')"><div class="mcard-ico">👟</div><div class="mcard-txt"><b>Schritte</b><small>Tagesziel</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-water')"><div class="mcard-ico">💧</div><div class="mcard-txt"><b>Wasser</b><small>Tagesziel, Glasgröße</small></div><div class="mcard-arr">›</div></div>
-    <div class="mcard" onclick="goSub('ov-smoke')"><div class="mcard-ico">🚬</div><div class="mcard-txt"><b>Rauchen</b><small>Tagesziel</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-groups')"><div class="mcard-ico">🗂</div><div class="mcard-txt"><b>Gruppen</b><small>Wochentage zuweisen</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-ex')"><div class="mcard-ico">🏋️</div><div class="mcard-txt"><b>Übungen</b><small>Sets, Wiederholungen, Gruppe</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-meals')"><div class="mcard-ico">🥗</div><div class="mcard-txt"><b>Mahlzeiten</b><small>Kalorien, Beschreibung, Mealtime</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-data')"><div class="mcard-ico">💾</div><div class="mcard-txt"><b>Daten</b><small>Export & Import</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-smoke')"><div class="mcard-ico">🚬</div><div class="mcard-txt"><b>Rauchen</b><small>Tagesziel Zigaretten</small></div><div class="mcard-arr">›</div></div>
   </div>
 </div>
 
@@ -621,7 +621,7 @@ function mkWater(log,ng,key){
         <div class="plbl"><span>${ml} ml</span><span>${cfg.water.goalMl} ml</span></div></div>
       <div class="glasses">${log.wf.map((v,i)=>`
         <div class="gbtn ${v?'on':''}" onclick="tgl(${i},'${key}')">
-          <span>${v?'💧':'🥤'}</span><small>${cfg.water.glassMl}ml</small>
+          <span>${v?'💧':'🫙'}</span><small>${cfg.water.glassMl}ml</small>
         </div>`).join('')}
       </div></div>`;
   return w;
@@ -751,7 +751,13 @@ function mkSmoke(log, key) {
     <div class="wbody">
       <div class="prog"><div class="pbar"><div class="pfill smk" style="width:${pct}%"></div></div>
         <div class="plbl"><span>${smoked} geraucht</span><span>Ziel: ${goal}</span></div></div>
-      <div class="glasses smk-grid">${cigHtml}</div>`;
+      <div class="glasses smk-grid">${cigHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div class="step-btn" onclick="addSmoke(-1,'${key}')"><span>−1</span><small>Weniger</small></div>
+        <div class="step-btn" onclick="addSmoke(1,'${key}')"><span>+1</span><small>Mehr</small></div>
+        <div class="step-btn" onclick="setSmokeDirect(0,'${key}')"><span>✕</span><small>Reset</small></div>
+      </div>
+    </div>`;
   return w;
 }
 function tglSmoke(i, key) {
@@ -1466,7 +1472,7 @@ let statsVisible = new Set(['water','steps','fitness','meals','weight','smoke'])
 function openStats(){
   if(cfg.statsVisible) statsVisible=new Set(cfg.statsVisible);
   if(cfg.statsPeriod) statsPeriod=cfg.statsPeriod;
-  [7,14,30, 365].forEach(n=>{
+  [7,14,30,365].forEach(n=>{
     const el=document.getElementById('sp-'+n);
     if(el) el.classList.toggle('active', n===statsPeriod);
   });
