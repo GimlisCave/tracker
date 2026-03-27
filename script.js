@@ -745,8 +745,8 @@ function mkFitness(log, exs, key) {
         const rI=s*2,lI=s*2+1;
         const rV=vals[rI]??'',rD=Number(rV)>0;
         const lV=vals[lI]??'',lD=Number(lV)>0;
-        rH+=`<div class="spill ${rD?'done':''}"><span>R${s+1}:</span><input type="number" value="${rV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${rI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
-        lH+=`<div class="spill ${lD?'done':''}"><span>L${s+1}:</span><input type="number" value="${lV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${lI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
+        rH+=`<div class="spill ${rD?'done':''}" data-si="${rI}"><span>R${s+1}:</span><input type="number" value="${rV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${rI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
+        lH+=`<div class="spill ${lD?'done':''}" data-si="${lI}"><span>L${s+1}:</span><input type="number" value="${lV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${lI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
       }
       rH+='</div>';lH+='</div>';
       sh=rH+lH;
@@ -754,7 +754,7 @@ function mkFitness(log, exs, key) {
       sh='<div class="srow">';
       for(let s=0;s<ex.sets;s++){
         const v=vals[s]??'',iD=Number(v)>0;
-        sh+=`<div class="spill ${iD?'done':''}"><span>S${s+1}:</span><input type="number" value="${v}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${s},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
+        sh+=`<div class="spill ${iD?'done':''}" data-si="${s}"><span>S${s+1}:</span><input type="number" value="${v}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${s},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
       }
       sh+='</div>';
     }
@@ -790,7 +790,53 @@ function mkFitness(log, exs, key) {
       <div class="exlist">${html || '<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
   return w;
 }
+function setRep(exId, si, val, key) {
+  const log = glog(key);
+  if (!log.ed[exId]) log.ed[exId] = [];
+  
+  const num = parseInt(val) || 0;
+  log.ed[exId][si] = num;
+  
+  saveLogs();
+  patchFitness(log, key);
+}
 
+function setExWeight(exId, val, key) {
+  const log = glog(key);
+  if (!log.ew) log.ew = {};
+  
+  let num = parseFloat(val.replace(',', '.')) || 0;
+  log.ew[exId] = num;
+  
+  saveLogs();
+}
+function patchFitness(log,key){
+  const dayExs=forDayKey(cfg.exercises,key);
+  let tot=0,done=0;
+  dayExs.forEach(ex=>{
+    const eff = ex.oneArm ? ex.sets*2 : ex.sets;
+    tot+=eff;
+    done+=countDoneEx(log,ex);
+  });
+  const pct=tot>0?Math.round(done/tot*100):0;
+  const wf=document.getElementById('wf-'+key);if(!wf)return;
+  const doneEx=dayExs.filter(ex=>countDoneEx(log,ex)>=(ex.oneArm?ex.sets*2:ex.sets)).length;
+  const sub=wf.querySelector('.wtit small');if(sub)sub.textContent=`${doneEx}/${dayExs.length} Einheiten · ${done}/${tot} Sätze`;
+  const pf=wf.querySelector('.pfill.f');if(pf)pf.style.width=pct+'%';
+  const pl=wf.querySelector('.plbl');if(pl)pl.children[0].textContent=done+' erledigt';
+  wf.querySelectorAll('.exitem').forEach((item,ei)=>{
+    const ex=dayExs[ei];if(!ex)return;
+    const eff=ex.oneArm?ex.sets*2:ex.sets;
+    const d=countDoneEx(log,ex);
+    const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${eff} ✓`;
+    const vals=log.ed[ex.id]||[];
+    item.querySelectorAll('.spill').forEach(p => {
+      const si = p.getAttribute('data-si');
+      p.classList.toggle('done', Number(vals[si]) > 0);
+    });
+  });
+  wf.classList.toggle('done',pct>=100);
+}
 function mkMeals(log, meals, key) {
   if (!cfg.calories) cfg.calories = { goal: 2000 };
   if (!log.cm) log.cm = [];
