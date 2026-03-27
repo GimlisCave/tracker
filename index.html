@@ -39,13 +39,11 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Statistiken Overlay -->
 <div class="wvis-ov" id="stats-ov" style="z-index:350">
   <div class="ovhdr">
     <h2>📊 Statistiken</h2>
     <button class="back" onclick="closeStats()">✕</button>
   </div>
-  <!-- Zeitraum & Metrik-Chips -->
   <div style="flex-shrink:0;padding:10px 17px 0;display:flex;flex-direction:column;gap:8px">
     <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
       <div class="schip active" id="sp-7"  onclick="setStatsPeriod(7,this)">7 Tage</div>
@@ -55,11 +53,9 @@
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap" id="stats-metric-chips"></div>
   </div>
-  <!-- Diagramme -->
   <div style="flex:1;overflow-y:auto;padding:12px 17px 30px;display:flex;flex-direction:column;gap:18px" id="stats-charts"></div>
 </div>
 
-<!-- Widget Sichtbarkeit -->
 <div class="wvis-ov" id="wvis-ov">
   <div class="ovhdr"><h2>👁 Widgets</h2><button class="back" onclick="closeWVis()">✕</button></div>
   <div class="wvis-list" id="wvis-list"></div>
@@ -68,9 +64,10 @@
 <div class="ov" id="ov-menu">
   <div class="ovhdr"><h2>⚙️ Einstellungen</h2><button class="back" onclick="closeMenu()">✕</button></div>
   <div class="mcards">
-    <div class="mcard" onclick="goSub('ov-steps')"><div class="mcard-ico">👟</div><div class="mcard-txt"><b>Schritte</b><small>Tagesziel</small></div><div class="mcard-arr">›</div></div>
-    <div class="mcard" onclick="goSub('ov-water')"><div class="mcard-ico">💧</div><div class="mcard-txt"><b>Wasser</b><small>Tagesziel, Glasgröße</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-steps')"><div class="mcard-ico">👟</div><div class="mcard-txt"><b>Schritte</b><small>Ziel & Anzeige</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-water')"><div class="mcard-ico">💧</div><div class="mcard-txt"><b>Wasser</b><small>Ziel, Glas & Anzeige</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-smoke')"><div class="mcard-ico">🚬</div><div class="mcard-txt"><b>Rauchen</b><small>Tagesziel</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-teeth')"><div class="mcard-ico">🦷</div><div class="mcard-txt"><b>Zähneputzen</b><small>Tagesziel</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-groups')"><div class="mcard-ico">🗂</div><div class="mcard-txt"><b>Gruppen</b><small>Wochentage zuweisen</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-ex')"><div class="mcard-ico">🏋️</div><div class="mcard-txt"><b>Übungen</b><small>Sets, Wiederholungen, Gruppe</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-meals')"><div class="mcard-ico">🥗</div><div class="mcard-txt"><b>Mahlzeiten</b><small>Kalorien, Beschreibung, Mealtime</small></div><div class="mcard-arr">›</div></div>
@@ -82,8 +79,16 @@
   <div class="ovhdr"><button class="back" onclick="backSub('ov-steps')">‹</button><h2>👟 Schritte</h2></div>
   <div class="mscroll">
     <section>
-      <h3>Tagesziel</h3>
+      <h3>Tagesziel & Anzeige</h3>
       <div class="frow"><label>Ziel (Schritte)</label><input class="fi num" type="number" id="s-steps-goal" min="1000" max="100000" step="500" oninput="onStepsC()" style="width:110px"></div>
+      <div class="frow">
+        <label>Statistik Anzeige</label>
+        <select class="fi flex" id="s-steps-unit" onchange="onStepsC()">
+          <option value="pct">% (Fortschritt)</option>
+          <option value="steps">Schritte</option>
+          <option value="km">Kilometer (km)</option>
+        </select>
+      </div>
     </section>
   </div>
 </div>
@@ -92,10 +97,28 @@
   <div class="ovhdr"><button class="back" onclick="backSub('ov-water')">‹</button><h2>💧 Wasser</h2></div>
   <div class="mscroll">
     <section>
-      <h3>Ziel & Glas</h3>
+      <h3>Ziel, Glas & Anzeige</h3>
       <div class="frow"><label>Tagesziel (ml)</label><input class="fi num" type="number" id="s-goal" min="500" max="15000" step="100" oninput="onWC()"></div>
       <div class="frow"><label>Glasgröße (ml)</label><input class="fi num" type="number" id="s-gml" min="50" max="2000" step="50" oninput="onWC()"></div>
+      <div class="frow">
+        <label>Statistik Anzeige</label>
+        <select class="fi flex" id="s-water-unit" onchange="onWC()">
+          <option value="pct">% (Fortschritt)</option>
+          <option value="ml">Milliliter (ml)</option>
+          <option value="l">Liter (L)</option>
+        </select>
+      </div>
       <div class="wnote" id="wnote"></div>
+    </section>
+  </div>
+</div>
+
+<div class="ov" id="ov-teeth">
+  <div class="ovhdr"><button class="back" onclick="backSub('ov-teeth')">‹</button><h2>🦷 Zähneputzen</h2></div>
+  <div class="mscroll">
+    <section>
+      <h3>Tagesziel</h3>
+      <div class="frow"><label>Wie oft täglich?</label><input class="fi num" type="number" id="s-teeth-goal" min="1" max="10" step="1" oninput="onTeethC()" style="width:110px"></div>
     </section>
   </div>
 </div>
@@ -165,7 +188,6 @@
   </div>
 </div>
 
-<!-- Cheat Meal Overlay – mit Vorauswahl -->
 <div class="ov" id="ov-cheat">
   <div class="ovhdr"><h2>🍩 Cheat Meal</h2><button class="back" onclick="closeCheat()">✕</button></div>
   <div class="mscroll">
@@ -215,7 +237,6 @@
   </div>
 </div>
 
-<!-- Kalender – mit Swipe -->
 <div class="ov" id="ov-cal">
   <div class="ovhdr"><h2>📅 Kalender</h2><button class="back" onclick="closeCal()">✕</button></div>
   <div class="mscroll" style="overflow:hidden;display:flex;flex-direction:column;padding:10px 14px 20px">

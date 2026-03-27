@@ -4,7 +4,7 @@ const JS2D=[6,0,1,2,3,4,5];
 const ICONS = ['🍎','🍌','🍉','🍇','🍓','🫐','🍒','🍑','🍍','🥝','🥑','🥦','🥕','🌽','🥐','🍞','🥞','🧀','🥩','🍗','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🍫','🍬','🍭','🍮','🍯','🥤','🧃','🥛','☕','🍵','🧉','🏋️','🏃','🚶','🚴','🚵','🏊','🤽','🚣','🏄','🧗','🧘','🤸','🤺','🥊','🥋','💪','👟','⚽','🏀','🏈','⚾','🎾','🏐','🏉','🏓','🏸','🏒','🏏','⛳','🏹','🎿','🏂','⛸️','🛹','🛼'];
 const MONTH_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
-let cfg={water:{goalMl:2000,glassMl:250,icon:'🫙'},steps:{goal:10000},groups:[],exercises:[],meals:[],smoke:{goal:20},widgetOrder:null,hiddenWidgets:[]};
+let cfg={water:{goalMl:2000,glassMl:250,icon:'🫙',statUnit:'pct'},steps:{goal:10000,statUnit:'pct'},teeth:{goal:2},groups:[],exercises:[],meals:[],smoke:{goal:20},widgetOrder:null,hiddenWidgets:['wsmk','wtb'],sortMode:'default'};
 let logs={};
 let sortMode='default';
 let ipt=null;
@@ -16,8 +16,8 @@ let pendIco={glass:'🥤',nex:'🏋️',nml:'🥗',ch:'🍩'};
 let cheatKey=null;
 let editExIdx = -1;
 let editMlIdx = -1;
+let editCmName = null;
 
-// ══ WIDGET VISIBILITY ══
 const WIDGET_DEFS = [
   {id:'ws',label:'Schritte',icon:'👟'},
   {id:'ww',label:'Wasser',icon:'💧'},
@@ -25,10 +25,11 @@ const WIDGET_DEFS = [
   {id:'wm',label:'Mahlzeiten',icon:'🥗'},
   {id:'wg',label:'Gewicht',icon:'⚖️'},
   {id:'wsmk',label:'Rauchen',icon:'🚬'},
+  {id:'wtb',label:'Zähneputzen',icon:'🦷'},
 ];
 
 function openWVis(){
-  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];
+  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=['wsmk','wtb'];
   const el=document.getElementById('wvis-list');
   el.innerHTML=WIDGET_DEFS.map(w=>{
     const vis=!cfg.hiddenWidgets.includes(w.id);
@@ -46,7 +47,7 @@ function closeWVis(){
   renderThreePages();
 }
 function toggleWidgetVis(wid,el){
-  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];
+  if(!cfg.hiddenWidgets)cfg.hiddenWidgets=['wsmk','wtb'];
   const idx=cfg.hiddenWidgets.indexOf(wid);
   if(idx>=0){cfg.hiddenWidgets.splice(idx,1);el.classList.add('active');el.querySelector('.wvis-check').textContent='✓';}
   else{cfg.hiddenWidgets.push(wid);el.classList.remove('active');el.querySelector('.wvis-check').textContent='';}
@@ -55,7 +56,6 @@ function isWidgetHidden(prefix){
   return cfg.hiddenWidgets&&cfg.hiddenWidgets.includes(prefix);
 }
 
-// ══ SWIPE ITEMS ══
 function initItemSwipes() {
   let sx=0, sy=0, sEl=null, sLocked=false;
   document.addEventListener('touchstart', e => {
@@ -114,7 +114,6 @@ function initItemSwipes() {
   }, {passive: true});
 }
 
-// ══ DAY SWIPE ══
 function initSwipe(){
   const wrap=document.getElementById('swipe-wrap');
   const inner=document.getElementById('swipe-inner');
@@ -139,7 +138,6 @@ function initSwipe(){
   },{passive:true});
 }
 
-// ══ CALENDAR SWIPE ══
 function initCalSwipe(){
   const inner=document.getElementById('cal-swipe-inner');
   const ov=document.getElementById('ov-cal');
@@ -166,9 +164,9 @@ function initCalSwipe(){
   },{passive:true});
 }
 
-// ══ CHEAT MEAL ══
 function openCheat(key) {
   cheatKey = key;
+  editCmName = null;
   pendIco.ch = '🍩';
   document.getElementById('ch-ico').textContent = '🍩';
   document.getElementById('ch-name').value = '';
@@ -176,19 +174,27 @@ function openCheat(key) {
   document.getElementById('ch-desc').value = '';
   document.getElementById('ch-type').value = 'Snack';
   document.getElementById('btn-save-cheat').textContent = '+ Eintragen';
-  // Vorhandene Cheat Meals aus allen Logs sammeln
+
   const seen=new Map();
   Object.values(logs).forEach(l=>{if(l.cm)l.cm.forEach(c=>{if(c.name&&!seen.has(c.name))seen.set(c.name,c);});});
   const prevList=document.getElementById('cm-prev-list');
   const prevSection=document.getElementById('cm-prev-section');
+
   if(seen.size){
     prevSection.style.display='';
+    prevList.style.maxHeight='220px';
+    prevList.style.overflowY='auto';
+    prevList.style.overflowX='hidden';
     prevList.innerHTML=[...seen.values()].map(c=>`
-      <div class="cm-prev-item" onclick="pickPrevCheat(${JSON.stringify(c).replace(/"/g,'&quot;')})">
-        <span style="font-size:18px">${c.icon||'🍩'}</span>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${c.name}</div>
-          ${c.cals?`<div style="font-size:11px;color:var(--muted)">${c.cals} kcal · ${c.type||'Snack'}</div>`:''}
+      <div class="sit-wrap">
+        <div class="sit-bg sit-bg-l">🗑</div>
+        <div class="sit-bg sit-bg-r">✏️</div>
+        <div class="sit-content cm-prev-item" style="margin-bottom:0" data-del="delPrevCheat('${c.name.replace(/'/g,"\\'")}')" data-edit="editPrevCheat('${c.name.replace(/'/g,"\\'")}')" onclick="pickPrevCheat(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+          <span style="font-size:18px">${c.icon||'🍩'}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${c.name}</div>
+            ${c.cals?`<div style="font-size:11px;color:var(--muted)">${c.cals} kcal · ${c.type||'Snack'}</div>`:''}
+          </div>
         </div>
       </div>`).join('');
   } else {
@@ -198,6 +204,7 @@ function openCheat(key) {
   document.getElementById('ov-cheat').classList.add('open');
 }
 function pickPrevCheat(c){
+  if (editCmName) return;
   document.getElementById('ch-name').value=c.name||'';
   document.getElementById('ch-cals').value=c.cals||'';
   document.getElementById('ch-desc').value=c.desc||'';
@@ -207,23 +214,66 @@ function pickPrevCheat(c){
   document.querySelectorAll('.cm-prev-item').forEach(el=>el.classList.remove('selected'));
   event.currentTarget.classList.add('selected');
 }
-function closeCheat(){document.getElementById('ov-cheat').classList.remove('open');}
+function editPrevCheat(name) {
+  const seen=new Map();
+  Object.values(logs).forEach(l=>{if(l.cm)l.cm.forEach(c=>{if(c.name&&!seen.has(c.name))seen.set(c.name,c);});});
+  const c = seen.get(name);
+  if(!c) return;
+  editCmName = name;
+  document.getElementById('ch-name').value = c.name || '';
+  document.getElementById('ch-cals').value = c.cals || '';
+  document.getElementById('ch-desc').value = c.desc || '';
+  document.getElementById('ch-type').value = c.type || 'Snack';
+  pendIco.ch = c.icon || '🍩';
+  document.getElementById('ch-ico').textContent = pendIco.ch;
+  document.querySelectorAll('.cm-prev-item').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('btn-save-cheat').textContent = '💾 Speichern';
+}
+function delPrevCheat(name) {
+  if(!confirm('Dieses Cheat Meal aus dem Verlauf löschen?')) return;
+  Object.values(logs).forEach(l => {
+    if(l.cm) l.cm = l.cm.filter(c => c.name !== name);
+  });
+  saveLogs();
+  buildPage('page-curr', activeDate);
+  openCheat(cheatKey);
+}
 function saveCheat() {
   const name = document.getElementById('ch-name').value.trim();
   const cals = parseInt(document.getElementById('ch-cals').value) || 0;
   const desc = document.getElementById('ch-desc').value.trim();
   const type = document.getElementById('ch-type').value;
   if (!name) { showToast('⚠️ Name fehlt'); return; }
-  const log = glog(cheatKey);
-  if (!log.cm) log.cm = [];
-  log.cm.push({ id: 'c' + Date.now(), icon: pendIco.ch, name, cals, desc, type });
-  showToast('🍩 Cheat Meal eingetragen!');
+  if (editCmName) {
+    Object.values(logs).forEach(l => {
+      if (l.cm) {
+        l.cm.forEach(c => {
+          if (c.name === editCmName) {
+            c.name = name;
+            c.cals = cals;
+            c.desc = desc;
+            c.type = type;
+            c.icon = pendIco.ch;
+          }
+        });
+      }
+    });
+    showToast('🍩 Cheat Meal aktualisiert!');
+    editCmName = null;
+  } else {
+    const log = glog(cheatKey);
+    if (!log.cm) log.cm = [];
+    log.cm.push({ id: 'c' + Date.now(), icon: pendIco.ch, name, cals, desc, type });
+    showToast('🍩 Cheat Meal eingetragen!');
+  }
   saveLogs();
   closeCheat();
   buildPage('page-curr', activeDate);
 }
-
-// ══ REP TOGGLE ══
+function closeCheat(){
+  document.getElementById('ov-cheat').classList.remove('open');
+  editCmName = null;
+}
 function tglRep(exId, si, maxReps, key) {
   const log = glog(key);
   if(!log.ed[exId]) log.ed[exId] = [];
@@ -247,32 +297,29 @@ function jumpToDate(d){activeDate=new Date(d);activeDate.setHours(0,0,0,0);rende
 function saveCfg(){localStorage.setItem('dtc',JSON.stringify(cfg));}
 function saveLogs(){localStorage.setItem('dtl',JSON.stringify(logs));}
 function loadAll(){
-  try{const c=localStorage.getItem('dtc');if(c){const parsed=JSON.parse(c);cfg={...cfg,...parsed};if(!cfg.hiddenWidgets)cfg.hiddenWidgets=[];}}catch(e){}
+  try{const c=localStorage.getItem('dtc');if(c){const parsed=JSON.parse(c);cfg={...cfg,...parsed};if(!cfg.hiddenWidgets)cfg.hiddenWidgets=['wsmk','wtb'];if(cfg.sortMode)sortMode=cfg.sortMode;}}catch(e){}
   try{const l=localStorage.getItem('dtl');if(l)logs=JSON.parse(l);}catch(e){}
 }
 
 function glog(key){
-  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[],smokedArr:[],ew:{}};
-  // Migration: altes smoked (Zahl) → smokedArr (Array)
+  if(!logs[key])logs[key]={wf:[],ed:{},md:{},sc:0,order:[],open:[],smokedArr:[],ew:{},tb:[]};
   if(!logs[key].smokedArr){
     const n=logs[key].smoked||0;
     logs[key].smokedArr=Array.from({length:n},()=>true);
     delete logs[key].smoked;
   }
   if(!logs[key].ew)logs[key].ew={};
+  if(!logs[key].tb)logs[key].tb=[];
   return logs[key];
 }
 
-// ══ WIDGET ORDER (global, gespeichert) ══
-// Speichert globale Reihenfolge als Array von Widget-Prefixen: ['ws','ww','wf','wm','wg']
 function getGlobalOrder(){
-  return cfg.widgetOrder && cfg.widgetOrder.length ? cfg.widgetOrder : ['ws','ww','wf','wm','wg','wsmk'];
+  return cfg.widgetOrder && cfg.widgetOrder.length ? cfg.widgetOrder : ['ws','ww','wf','wm','wg','wsmk','wtb'];
 }
 function saveGlobalOrder(widgets){
-  // widgets = NodeList oder Array von .widget Elementen
   cfg.widgetOrder=[...widgets].map(w=>{
-    const id=w.id; // z.B. "ws-2024-01-01"
-    const prefix=id.split('-')[0]; // z.B. "ws"
+    const id=w.id;
+    const prefix=id.split('-')[0];
     return prefix;
   });
   saveCfg();
@@ -307,21 +354,22 @@ function buildPage(cid, d){
 
   const ng = Math.ceil(cfg.water.goalMl / cfg.water.glassMl);
   while(log.wf.length < ng) log.wf.push(false);
+  
+  const tbGoal = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+  while(log.tb.length < tbGoal) log.tb.push(false);
 
-  // Nur aktive Gruppen berücksichtigen
   const dayExs = forDayKey(cfg.exercises, key);
   const dayMls = forDayKey(cfg.meals, key);
 
-  // Widgets bauen
   const widgetMap = {};
   widgetMap['ws'] = mkSteps(log, key);
   widgetMap['ww'] = mkWater(log, ng, key);
+  widgetMap['wtb'] = mkTeeth(log, key);
   widgetMap['wf'] = dayExs.length ? mkFitness(log, dayExs, key) : null;
   widgetMap['wm'] = (dayMls.length || (log.cm && log.cm.length)) ? mkMeals(log, dayMls, key) : null;
   widgetMap['wg'] = mkWeight(log, key);
   widgetMap['wsmk'] = mkSmoke(log, key);
 
-  // Globale Reihenfolge anwenden
   const order = getGlobalOrder();
   order.forEach(prefix=>{
     const w = widgetMap[prefix];
@@ -329,7 +377,6 @@ function buildPage(cid, d){
     if(isWidgetHidden(prefix)){w.classList.add('hidden-widget');}
     wlist.appendChild(w);
   });
-  // Falls ein Widget nicht in der Reihenfolge ist (Fallback)
   Object.keys(widgetMap).forEach(prefix=>{
     if(!order.includes(prefix)&&widgetMap[prefix]){
       if(isWidgetHidden(prefix))widgetMap[prefix].classList.add('hidden-widget');
@@ -339,7 +386,7 @@ function buildPage(cid, d){
 
   c.appendChild(wlist);
 
-  const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key, 'wsmk-'+key];
+  const openIds = log.open.length ? log.open : ['ws-'+key, 'ww-'+key, 'wf-'+key, 'wm-'+key, 'wg-'+key, 'wsmk-'+key, 'wtb-'+key];
   wlist.querySelectorAll('.widget').forEach(w => w.classList.toggle('open', openIds.includes(w.id)));
 
   applySort(key);
@@ -348,18 +395,15 @@ function buildPage(cid, d){
 
 function dowFromDate(d){return JS2D[d.getDay()];}
 
-// Filtert nach aktiven Gruppen UND Wochentag UND addedAt (nur heute+Zukunft)
 function forDayKey(arr, key) {
   const d = new Date(key);
   const dow = JS2D[d.getDay()];
   const todayKey = toKey(new Date());
   return arr.filter(it => {
-    // addedAt-Check: nur ab dem Tag anzeigen, an dem hinzugefügt wurde
     if(it.addedAt && key < it.addedAt) return false;
     if (!it.groupId) return true;
     const g = cfg.groups.find(g => g.id === it.groupId);
     if (!g) return true;
-    // Inaktive Gruppe → nie anzeigen
     if (g.inactive) return false;
     return !g.days || g.days.length === 0 || g.days.includes(dow);
   });
@@ -390,28 +434,87 @@ function tgl(i,key){
   const l=glog(key);
   const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);
   if(i >= ng) {
-    // Extra-Slot: einzeln togglen, wenn abgewählt → diesen Slot entfernen
     l.wf[i] = !l.wf[i];
     if(!l.wf[i]) l.wf.splice(i, 1);
   } else {
-    // Standard-Slot: kumulativ
     const lastActive = l.wf.slice(0, ng).lastIndexOf(true);
     if(lastActive === i) {
-      // letzter aktiver → alle aus
       for(let x=0;x<ng;x++) l.wf[x]=false;
     } else {
-      // sonst: alle bis i an, Rest aus
       for(let x=0;x<ng;x++) l.wf[x]=x<=i;
     }
-    // Extras (ab ng) bleiben unberührt
   }
   saveLogs();buildPage('page-curr',activeDate);
 }
-
 function addExtraGlass(key){
   const l=glog(key);
   l.wf.push(true);
   saveLogs();buildPage('page-curr',activeDate);
+}
+
+function mkTeeth(log, key) {
+  const goal = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+  if(!log.tb) log.tb = [];
+  const arr = log.tb;
+  const doneCount = arr.filter(Boolean).length;
+  const pct = Math.min(100, Math.round(doneCount / goal * 100));
+  const isDone = doneCount >= goal;
+  const w = document.createElement('div');
+  w.className = 'widget open' + (isDone ? ' done' : ''); w.id = 'wtb-' + key; w.dataset.o = 5;
+  let html = '';
+  for(let i = 0; i < arr.length || i < goal; i++) {
+    const isBrushed = !!arr[i];
+    if(i < goal) {
+      html += `<div class="gbtn ${isBrushed ? 'on tb-on' : ''}" onclick="tglTeeth(${i},'${key}')">
+        <span>${isBrushed ? '😁' : '🦷'}</span><small>${i+1}</small>
+      </div>`;
+    } else {
+      html += `<div class="gbtn on tb-on" onclick="tglTeeth(${i},'${key}')">
+        <span>🦷</span><small>+${i-goal+1}</small>
+      </div>`;
+    }
+  }
+  w.innerHTML = `<div class="drgh"><span>⠿</span></div>
+    <div class="whdr" onclick="twid('wtb-${key}','${key}')">
+      <div class="wico" style="background:rgba(96,240,200,0.2)">🦷</div>
+      <div class="wtit"><b>Zähneputzen</b><small>${doneCount}/${goal} mal · ${pct}%</small></div>
+      <div class="wchev">▾</div></div>
+    <div class="wbody">
+      <div class="prog"><div class="pbar"><div class="pfill tb" style="width:${pct}%"></div></div>
+        <div class="plbl"><span>${doneCount} erledigt</span><span>Ziel: ${goal}</span></div></div>
+      <div class="glasses tb-grid">${html}<div class="gbtn extra-add" onclick="addExtraTeeth('${key}')"><span>＋</span><small>extra</small></div></div>
+    </div>`;
+  return w;
+}
+function tglTeeth(i, key) {
+  const log = glog(key);
+  const goal = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+  if(!log.tb) log.tb = [];
+  const arr = log.tb;
+  if(i >= goal) {
+    if(i < arr.length) {
+      arr[i] = !arr[i];
+      if(!arr[i]) arr.splice(i, 1);
+    }
+  } else {
+    while(arr.length < goal) arr.push(false);
+    const lastActive = arr.slice(0, goal).lastIndexOf(true);
+    if(lastActive === i) {
+      for(let x=0;x<goal;x++) arr[x]=false;
+    } else {
+      for(let x=0;x<goal;x++) arr[x]=x<=i;
+    }
+  }
+  saveLogs(); buildPage('page-curr', activeDate);
+}
+function addExtraTeeth(key) {
+  const log = glog(key);
+  if(!log.tb) log.tb = [];
+  const goal = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+  const arr = log.tb;
+  while(arr.length < goal) arr.push(false);
+  arr.push(true);
+  saveLogs(); buildPage('page-curr', activeDate);
 }
 
 function mkSteps(log,key){
@@ -428,9 +531,6 @@ function mkSteps(log,key){
         <div class="plbl"><span>${sc.toLocaleString('de')} Schritte</span><span>${goal.toLocaleString('de')}</span></div></div>
       <input class="step-inp" type="number" value="${sc||''}" placeholder="0" min="0"
         oninput="setSteps(this.value,'${key}')" inputmode="numeric">
-      <div class="steps-row">
-        ${[500,1000,2000,5000].map(n=>`<div class="step-btn" onclick="addSteps(${n},'${key}')"><span>+${n>=1000?n/1000+'k':n}</span><small>Schritte</small></div>`).join('')}
-      </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:10px;background:rgba(255,255,255,0.05);border-radius:var(--rsm);padding:10px 12px">
         <span style="font-size:20px">🗺️</span>
         <span style="font-size:13px;color:var(--muted);flex:1">Gegangene km</span>
@@ -450,7 +550,6 @@ function patchSteps(log,key){
   ws.classList.toggle('done',pct>=100);
 }
 function setSteps(val,key){const log=glog(key);log.sc=Math.max(0,parseInt(val)||0);saveLogs();patchSteps(log,key);}
-function addSteps(n,key){const log=glog(key);log.sc=(log.sc||0)+n;saveLogs();buildPage('page-curr', activeDate);}
 
 function setWeight(val, key) {
   let num = parseFloat(val.replace(',', '.')) || 0;
@@ -523,7 +622,6 @@ function mkSmoke(log, key) {
         <span>${isSmoked ? '🚬' : '🚭'}</span><small>${i+1}</small>
       </div>`;
     } else {
-      // Extra (über goal)
       cigHtml += `<div class="gbtn on smk-on" onclick="tglSmoke(${i},'${key}')">
         <span>🚬</span><small>+${i-goal+1}</small>
       </div>`;
@@ -551,23 +649,18 @@ function tglSmoke(i, key) {
   if(!log.smokedArr) log.smokedArr = [];
   const arr = log.smokedArr;
   if(i >= goal) {
-    // Extra-Slot: einzeln togglen, wenn abgewählt → diesen Slot entfernen
     if(i < arr.length) {
       arr[i] = !arr[i];
       if(!arr[i]) arr.splice(i, 1);
     }
   } else {
-    // Standard-Slot: kumulativ
     while(arr.length < goal) arr.push(false);
     const lastActive = arr.slice(0, goal).lastIndexOf(true);
     if(lastActive === i) {
-      // letzter aktiver → alle aus
       for(let x=0;x<goal;x++) arr[x]=false;
     } else {
-      // alle bis i an, Rest aus
       for(let x=0;x<goal;x++) arr[x]=x<=i;
     }
-    // Extras (ab goal) bleiben unberührt
   }
   saveLogs(); patchSmoke(log, key);
 }
@@ -585,7 +678,6 @@ function addExtraSmoke(key) {
   const log = glog(key);
   if(!log.smokedArr) log.smokedArr = [];
   const goal = cfg.smoke ? cfg.smoke.goal||20 : 20;
-  // Füge einen neuen Slot über dem Limit hinzu
   const arr = log.smokedArr;
   while(arr.length < goal) arr.push(false);
   arr.push(true);
@@ -646,22 +738,25 @@ function mkFitness(log, exs, key) {
     const exWeight = (log.ew && log.ew[ex.id]) || '';
     const d = countDoneEx(log, ex);
     let sh = '';
-    for (let s = 0; s < effectiveSets; s++) {
-      const v = vals[s] ?? ''; const isDone = Number(v) > 0;
-      let label;
-      if(ex.oneArm) {
-        const round = Math.floor(s/2)+1;
-        label = (s%2===0 ? 'R' : 'L') + round;
-      } else {
-        label = 'S'+(s+1);
+    if(ex.oneArm){
+      let rH='<div class="srow" style="margin-bottom:6px">';
+      let lH='<div class="srow">';
+      for(let s=0;s<ex.sets;s++){
+        const rI=s*2,lI=s*2+1;
+        const rV=vals[rI]??'',rD=Number(rV)>0;
+        const lV=vals[lI]??'',lD=Number(lV)>0;
+        rH+=`<div class="spill ${rD?'done':''}"><span>R${s+1}:</span><input type="number" value="${rV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${rI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
+        lH+=`<div class="spill ${lD?'done':''}"><span>L${s+1}:</span><input type="number" value="${lV}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${lI},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
       }
-      sh += `<div class="spill ${isDone ? 'done' : ''}"><span>${label}:</span>
-  <input type="number" value="${v}" placeholder="0" min="0" max="999"
-    oninput="setRep('${ex.id}',${s},this.value,'${key}')"
-    onfocus="if(this.value=='0')this.value=''"
-    onblur="if(this.value=='')this.value='0'"
-    style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric">
-  <span>/${ex.maxReps}</span></div>`;
+      rH+='</div>';lH+='</div>';
+      sh=rH+lH;
+    }else{
+      sh='<div class="srow">';
+      for(let s=0;s<ex.sets;s++){
+        const v=vals[s]??'',iD=Number(v)>0;
+        sh+=`<div class="spill ${iD?'done':''}"><span>S${s+1}:</span><input type="number" value="${v}" placeholder="0" min="0" max="999" oninput="setRep('${ex.id}',${s},this.value,'${key}')" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" style="color:inherit;width:28px;background:transparent;border:none;text-align:right;font-weight:bold;font-size:14px;outline:none;padding:0" inputmode="numeric"><span>/${ex.maxReps}</span></div>`;
+      }
+      sh+='</div>';
     }
     const g = ex.groupId ? cfg.groups.find(g => g.id === ex.groupId) : null;
     html += `<div class="exitem">
@@ -678,7 +773,7 @@ function mkFitness(log, exs, key) {
           style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--text);font-size:12px;font-family:inherit;outline:none;text-align:center" inputmode="decimal">
         <span style="font-size:11px;color:var(--muted)">kg</span>
       </div>
-      <div class="srow">${sh}</div></div>`;
+      <div>${sh}</div></div>`;
   });
   const w = document.createElement('div');
   w.className = 'widget open' + (pct >= 100 ? ' done' : ''); w.id = 'wf-' + key; w.dataset.o = 1;
@@ -694,44 +789,6 @@ function mkFitness(log, exs, key) {
         <div class="plbl"><span>${done} erledigt</span><span>${tot} Sätze</span></div></div>
       <div class="exlist">${html || '<div class="empty">Keine Übungen für heute.</div>'}</div></div>`;
   return w;
-}
-
-function setRep(exId,si,val,key){
-  const log=glog(key);
-  if(!log.ed[exId])log.ed[exId]=[];
-  log.ed[exId][si]=val;saveLogs();patchFitness(log,key);
-}
-
-function setExWeight(exId, val, key) {
-  const log = glog(key);
-  if(!log.ew) log.ew = {};
-  log.ew[exId] = val;
-  saveLogs();
-}
-
-function patchFitness(log,key){
-  const dayExs=forDayKey(cfg.exercises,key);
-  let tot=0,done=0;
-  dayExs.forEach(ex=>{
-    const eff = ex.oneArm ? ex.sets*2 : ex.sets;
-    tot+=eff;
-    done+=countDoneEx(log,ex);
-  });
-  const pct=tot>0?Math.round(done/tot*100):0;
-  const wf=document.getElementById('wf-'+key);if(!wf)return;
-  const doneEx=dayExs.filter(ex=>countDoneEx(log,ex)>=(ex.oneArm?ex.sets*2:ex.sets)).length;
-  const sub=wf.querySelector('.wtit small');if(sub)sub.textContent=`${doneEx}/${dayExs.length} Einheiten · ${done}/${tot} Sätze`;
-  const pf=wf.querySelector('.pfill.f');if(pf)pf.style.width=pct+'%';
-  const pl=wf.querySelector('.plbl');if(pl)pl.children[0].textContent=done+' erledigt';
-  wf.querySelectorAll('.exitem').forEach((item,ei)=>{
-    const ex=dayExs[ei];if(!ex)return;
-    const eff=ex.oneArm?ex.sets*2:ex.sets;
-    const d=countDoneEx(log,ex);
-    const badge=item.querySelector('.exbadge');if(badge)badge.textContent=`${d}/${eff} ✓`;
-    const vals=log.ed[ex.id]||[];
-    item.querySelectorAll('.spill').forEach((p,si)=>{p.classList.toggle('done', Number(vals[si])>0);});
-  });
-  wf.classList.toggle('done',pct>=100);
 }
 
 function mkMeals(log, meals, key) {
@@ -814,16 +871,33 @@ function twid(id,key){
 
 function setSort(m,el){
   sortMode=m;
-  document.querySelectorAll('.schip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
+  cfg.sortMode=m;
+  saveCfg();
+  document.querySelectorAll('.bbar-sort .schip').forEach(c=>c.classList.remove('active'));
+  if(el){
+    el.classList.add('active');
+  }else{
+    const chips=document.querySelectorAll('.bbar-sort .schip');
+    if(m==='pending'&&chips[1])chips[1].classList.add('active');
+    else if(m==='done'&&chips[2])chips[2].classList.add('active');
+    else if(chips[0])chips[0].classList.add('active');
+  }
   applySort(toKey(activeDate));
 }
+
 function applySort(key){
   const c=document.getElementById('wlist-'+key);if(!c)return;
   const ws=[...c.querySelectorAll('.widget')];
   if(sortMode==='pending')ws.sort((a,b)=>a.classList.contains('done')-b.classList.contains('done'));
   else if(sortMode==='done')ws.sort((a,b)=>b.classList.contains('done')-a.classList.contains('done'));
-  else ws.sort((a,b)=>+a.dataset.o - +b.dataset.o);
+  else {
+    const order=getGlobalOrder();
+    ws.sort((a,b)=>{
+      let aIdx=order.indexOf(a.id.split('-')[0]);if(aIdx===-1)aIdx=99;
+      let bIdx=order.indexOf(b.id.split('-')[0]);if(bIdx===-1)bIdx=99;
+      return aIdx-bIdx;
+    });
+  }
   ws.forEach(w=>c.appendChild(w));
 }
 
@@ -860,7 +934,6 @@ function initDrag(log,key){
     if(ph.parentNode)c.insertBefore(drag,ph);
     if(ph.parentNode)ph.remove();
     drag.classList.remove('dragging');drag.style.cssText='';
-    // Globale Reihenfolge speichern
     saveGlobalOrder(c.querySelectorAll('.widget'));
     drag=null;ph=null;
     document.removeEventListener('touchmove',mv);document.removeEventListener('mousemove',mv);
@@ -899,7 +972,6 @@ function moveMl(idx, dir) {
   saveCfg();renderMlList();renderThreePages();
 }
 
-// ══ KALENDER ══
 function openCal(){
   calViewYear=activeDate.getFullYear();calViewMonth=activeDate.getMonth();
   renderCal();
@@ -918,7 +990,6 @@ function renderCalPage(pageId, year, month){
   if(!page) return;
   page.innerHTML='';
 
-  // Wochentag-Header
   const hdr=document.createElement('div');
   hdr.className='cal-grid';
   hdr.style.cssText='margin-bottom:2px;grid-auto-rows:auto;flex:none';
@@ -951,7 +1022,6 @@ function renderCalPage(pageId, year, month){
     if(log){
       const wPct=()=>{const f=log.wf?log.wf.filter(Boolean).length:0;const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl);return ng?Math.min(100,Math.round(f/ng*100)):0;};
       const sPct=()=>{const sc=log.sc||0;return cfg.steps.goal?Math.min(100,Math.round(sc/cfg.steps.goal*100)):0;};
-      // Übungen: nur Übungen des jeweiligen Tages
       const fPct=()=>{
         const dayExs=forDayKey(cfg.exercises,k);
         let tot=0,done=0;
@@ -966,13 +1036,66 @@ function renderCalPage(pageId, year, month){
         if(log.cm)log.cm.forEach(ch=>{c+=(ch.cals||0);});
         return cfg.calories.goal?Math.min(100,Math.round(c/cfg.calories.goal*100)):0;
       };
-      const wp=wPct(),sp=sPct(),fp=fPct(),mp=mPct();
+      const smkPct=()=>{
+        const goal=cfg.smoke?cfg.smoke.goal||20:20;
+        const arr=log.smokedArr||[];
+        const smoked=arr.filter(Boolean).length;
+        const remaining=Math.max(0,goal-smoked);
+        return Math.round(remaining/goal*100);
+      };
+      const wgDone=()=>log.wg>0;
+      const tbPct=()=>{
+        const goal = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+        const arr = log.tb || [];
+        const count = arr.filter(Boolean).length;
+        return Math.min(100, Math.round(count / goal * 100));
+      };
+
+      const showW = !isWidgetHidden('ww');
+      const showS = !isWidgetHidden('ws');
+      const showF = !isWidgetHidden('wf');
+      const showM = !isWidgetHidden('wm');
+      const showWg = !isWidgetHidden('wg');
+      const showSmk = !isWidgetHidden('wsmk');
+      const showTb = !isWidgetHidden('wtb');
+
+      const wp=showW?wPct():0;
+      const sp=showS?sPct():0;
+      const fp=showF?fPct():0;
+      const mp=showM?mPct():0;
+      const smkp=showSmk?smkPct():0;
+      const wgp=showWg&&wgDone()?100:0;
+      const tbp=showTb?tbPct():0;
+
       const dayExs2=forDayKey(cfg.exercises,k);
       const hasExs=dayExs2.length>0;
       const dayMls2=forDayKey(cfg.meals,k);
       const hasMls=dayMls2.length>0;
-      if(wp>=100&&sp>=100&&(!hasExs||fp>=100)&&(!hasMls||mp>=100)){el.classList.add('all-done');}
-      const bars=[{p:wp,c:'#60c8f0'},{p:sp,c:'#f0d060'},{p:fp,c:'#f06060'},{p:mp,c:'#c8f060'}].filter(b=>b.p>0);
+
+      const wIsDone = !showW || wp>=100;
+      const sIsDone = !showS || sp>=100;
+      const fIsDone = !showF || (!hasExs || fp>=100);
+      const mIsDone = !showM || (!hasMls || mp>=100);
+      const wgIsDone = !showWg || wgDone();
+      const tbIsDone = !showTb || tbp>=100;
+      const smkActualDone = (log.smokedArr||[]).filter(Boolean).length >= (cfg.smoke?cfg.smoke.goal||20:20);
+      const smkIsDone2 = !showSmk || smkActualDone;
+
+      if(showW || showS || showF || showM || showWg || showSmk || showTb){
+        if(wIsDone && sIsDone && fIsDone && mIsDone && wgIsDone && smkIsDone2 && tbIsDone){
+          el.classList.add('all-done');
+        }
+      }
+
+      const bars=[];
+      if(showW && wp>0)bars.push({p:wp,c:'#60c8f0'});
+      if(showS && sp>0)bars.push({p:sp,c:'#f0d060'});
+      if(showF && fp>0)bars.push({p:fp,c:'#f06060'});
+      if(showM && mp>0)bars.push({p:mp,c:'#c8f060'});
+      if(showWg && wgp>0)bars.push({p:wgp,c:'#a060f0'});
+      if(showSmk && smkp>0)bars.push({p:smkp,c:'#e08040'});
+      if(showTb && tbp>0)bars.push({p:tbp,c:'#60f0c8'});
+
       if(bars.length){
         const stats=document.createElement('div');stats.className='cal-day-stats';
         bars.forEach(b=>{
@@ -992,17 +1115,20 @@ function renderCalPage(pageId, year, month){
 
 function renderCal(){
   document.getElementById('cal-title').textContent=MONTH_DE[calViewMonth]+' '+calViewYear;
-  // Prev, Curr, Next Monat
   let pm=calViewMonth-1,py=calViewYear;if(pm<0){pm=11;py--;}
   let nm=calViewMonth+1,ny=calViewYear;if(nm>11){nm=0;ny++;}
   renderCalPage('cal-page-prev',py,pm);
   renderCalPage('cal-page-curr',calViewYear,calViewMonth);
   renderCalPage('cal-page-next',ny,nm);
-  document.getElementById('cal-legend').innerHTML=`
-    <div class="cl-item"><div class="cl-dot" style="background:#60c8f0"></div>Wasser</div>
-    <div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Schritte</div>
-    <div class="cl-item"><div class="cl-dot" style="background:#f06060"></div>Übungen</div>
-    <div class="cl-item"><div class="cl-dot" style="background:#c8f060"></div>Mahlzeiten</div>`;
+  
+  document.getElementById('cal-legend').innerHTML=
+    (!isWidgetHidden('ww')?'<div class="cl-item"><div class="cl-dot" style="background:#60c8f0"></div>Wasser</div>':'')+
+    (!isWidgetHidden('ws')?'<div class="cl-item"><div class="cl-dot" style="background:#f0d060"></div>Schritte</div>':'')+
+    (!isWidgetHidden('wtb')?'<div class="cl-item"><div class="cl-dot" style="background:#60f0c8"></div>Zähne</div>':'')+
+    (!isWidgetHidden('wf')?'<div class="cl-item"><div class="cl-dot" style="background:#f06060"></div>Übungen</div>':'')+
+    (!isWidgetHidden('wm')?'<div class="cl-item"><div class="cl-dot" style="background:#c8f060"></div>Mahlzeiten</div>':'')+
+    (!isWidgetHidden('wg')?'<div class="cl-item"><div class="cl-dot" style="background:#a060f0"></div>Gewicht</div>':'')+
+    (!isWidgetHidden('wsmk')?'<div class="cl-item"><div class="cl-dot" style="background:#e08040"></div>Rauchen</div>':'');
 }
 
 function openMenu(){document.getElementById('ov-menu').classList.add('open');}
@@ -1015,6 +1141,7 @@ function goSub(id){
   else if(id==='ov-ex')initEx();
   else if(id==='ov-meals')initMls();
   else if(id==='ov-smoke')initSmoke();
+  else if(id==='ov-teeth')initTeeth();
   document.getElementById(id).classList.add('open');
 }
 function backSub(id){document.getElementById(id).classList.remove('open');document.getElementById('ov-menu').classList.add('open');}
@@ -1022,11 +1149,13 @@ function backSub(id){document.getElementById(id).classList.remove('open');docume
 function initWater(){
   document.getElementById('s-goal').value=cfg.water.goalMl;
   document.getElementById('s-gml').value=cfg.water.glassMl;
+  document.getElementById('s-water-unit').value=cfg.water.statUnit || 'pct';
   updWNote();
 }
 function onWC(){
   cfg.water.goalMl=parseInt(document.getElementById('s-goal').value)||2000;
   cfg.water.glassMl=parseInt(document.getElementById('s-gml').value)||250;
+  cfg.water.statUnit=document.getElementById('s-water-unit').value;
   saveCfg();updWNote();
 }
 function updWNote(){
@@ -1035,8 +1164,24 @@ function updWNote(){
   const n=Math.ceil(g/m);
   document.getElementById('wnote').textContent=`→ ${n} Gläser à ${m} ml = ${n*m} ml`;
 }
-function initSteps(){document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;}
-function onStepsC(){cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;saveCfg();}
+function initSteps(){
+  document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;
+  document.getElementById('s-steps-unit').value=cfg.steps.statUnit || 'pct';
+}
+function onStepsC(){
+  cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;
+  cfg.steps.statUnit=document.getElementById('s-steps-unit').value;
+  saveCfg();
+}
+
+function initTeeth(){
+  document.getElementById('s-teeth-goal').value = cfg.teeth ? cfg.teeth.goal || 2 : 2;
+}
+function onTeethC(){
+  if(!cfg.teeth) cfg.teeth = {goal: 2};
+  cfg.teeth.goal = parseInt(document.getElementById('s-teeth-goal').value) || 2;
+  saveCfg();
+}
 
 function initSmoke(){
   if(!cfg.smoke)cfg.smoke={goal:20};
@@ -1048,7 +1193,6 @@ function onSmokeC(){
   saveCfg();
 }
 
-// ══ GRUPPEN ══
 function initGroups(){renderGrpList();renderDChips('ng-days',[]);}
 function renderGrpList(){
   const el=document.getElementById('grp-list');
@@ -1090,6 +1234,46 @@ function renderDChips(cid,sel){
   el.querySelectorAll('.dchip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
 }
 function getSelD(cid){return[...document.querySelectorAll(`#${cid} .dchip.on`)].map(c=>+c.dataset.d);}
+
+let _tt;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>t.classList.remove('show'),2100);
+}
+
+function openIP(target){
+  ipt=target;
+  const igrid = document.getElementById('igrid');
+  if(igrid) igrid.innerHTML=ICONS.map(ic=>`<div class="iopt" onclick="pickIC('${ic}')">${ic}</div>`).join('');
+  document.getElementById('ipov').classList.add('open');
+}
+
+function closeIP(){
+  document.getElementById('ipov').classList.remove('open');
+  ipt=null;
+}
+
+const ipovEl = document.getElementById('ipov');
+if(ipovEl) {
+  ipovEl.addEventListener('click', function(e){
+    if(e.target===this) closeIP();
+  });
+}
+
+function pickIC(ic){
+  if(!ipt){closeIP();return;}
+  if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
+  else if(ipt==='nml'){pendIco.nml=ic;document.getElementById('nml-ico').textContent=ic;}
+  else if(ipt==='ch'){pendIco.ch=ic;document.getElementById('ch-ico').textContent=ic;}
+  else if(ipt.startsWith('ex_')){const i=+ipt.split('_')[1];cfg.exercises[i].icon=ic;saveCfg();renderExList();renderThreePages();}
+  else if(ipt.startsWith('ml_')){const i=+ipt.split('_')[1];cfg.meals[i].icon=ic;saveCfg();renderMlList();renderThreePages();}
+  closeIP();
+}
+
 function addGroup(){
   const name=document.getElementById('ng-name').value.trim();
   const color=document.getElementById('ng-col').value;
@@ -1107,14 +1291,18 @@ function addGroup(){
   saveCfg();
   document.getElementById('ng-name').value='';
   renderGrpList();renderDChips('ng-days',[]);refreshGrpSels();
+  renderThreePages(); // <- dashboard direkt aktualisieren
 }
+
 function delGrp(id){
   if(!confirm('Gruppe wirklich löschen?'))return;
   cfg.groups=cfg.groups.filter(g=>g.id!==id);
   cfg.exercises.forEach(e=>{if(e.groupId===id)e.groupId=null;});
   cfg.meals.forEach(m=>{if(m.groupId===id)m.groupId=null;});
   saveCfg();renderGrpList();refreshGrpSels();
+  renderThreePages();
 }
+
 function refreshGrpSels(){
   buildGSel('nex-grp');buildGSel('nml-grp');
   if(document.getElementById('ov-ex').classList.contains('open'))renderExList();
@@ -1128,7 +1316,6 @@ function buildGSel(id){
   el.value=cur;
 }
 
-// ══ ÜBUNGEN ══
 function initEx(){renderExList();buildGSel('nex-grp');document.getElementById('nex-ico').textContent=pendIco.nex;}
 function renderExList(){
   const el=document.getElementById('ex-list');if(!el)return;
@@ -1184,13 +1371,15 @@ function addEx(){
   document.getElementById('nex-onearm').checked=false;
   pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';
   renderExList();
+  renderThreePages(); // <- dashboard direkt aktualisieren
 }
+
 function delEx(i){
   if(!confirm('Übung wirklich löschen?'))return;
   cfg.exercises.splice(i,1);saveCfg();renderExList();
+  renderThreePages();
 }
 
-// ══ MAHLZEITEN ══
 function initMls(){
   if(!cfg.calories)cfg.calories={goal:2000};
   document.getElementById('s-cal-goal').value=cfg.calories.goal;
@@ -1261,45 +1450,30 @@ function addMl(){
   document.querySelectorAll('#nml-types .dchip').forEach(c=>c.classList.remove('on'));
   pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';
   renderMlList();
+  renderThreePages(); // <- dashboard direkt aktualisieren
 }
+
 function delMl(i){
   if(!confirm('Mahlzeit wirklich löschen?'))return;
   cfg.meals.splice(i,1);saveCfg();renderMlList();
+  renderThreePages();
 }
 
-// ══ ICON PICKER ══
-function openIP(target){
-  ipt=target;
-  document.getElementById('igrid').innerHTML=ICONS.map(ic=>`<div class="iopt" onclick="pickIC('${ic}')">${ic}</div>`).join('');
-  document.getElementById('ipov').classList.add('open');
+function getStatMetricsBase(){
+  const wUnit = cfg.water.statUnit || 'pct';
+  const wLabel = wUnit === 'ml' ? ' ml' : wUnit === 'l' ? ' L' : '%';
+  const sUnit = cfg.steps.statUnit || 'pct';
+  const sLabel = sUnit === 'steps' ? ' Sch.' : sUnit === 'km' ? ' km' : '%';
+  return [
+    {id:'water', label:'Wasser', color:'#60c8f0', unit: wLabel},
+    {id:'steps', label:'Schritte', color:'#f0d060', unit: sLabel},
+    {id:'teeth', label:'Zähne', color:'#60f0c8', unit:'%'},
+    {id:'fitness',label:'Übungen', color:'#f06060', unit:'%'},
+    {id:'meals',  label:'Mahlzeiten',color:'#c8f060',unit:'%'},
+    {id:'weight', label:'Gewicht',  color:'#a060f0', unit:'kg'},
+    {id:'smoke',  label:'Rauchen',  color:'#e08040', unit:'Zig.'},
+  ];
 }
-function closeIP(){document.getElementById('ipov').classList.remove('open');ipt=null;}
-document.getElementById('ipov').addEventListener('click',function(e){if(e.target===this)closeIP();});
-function pickIC(ic){
-  if(!ipt){closeIP();return;}
-  if(ipt==='nex'){pendIco.nex=ic;document.getElementById('nex-ico').textContent=ic;}
-  else if(ipt==='nml'){pendIco.nml=ic;document.getElementById('nml-ico').textContent=ic;}
-  else if(ipt==='ch'){pendIco.ch=ic;document.getElementById('ch-ico').textContent=ic;}
-  else if(ipt.startsWith('ex_')){const i=+ipt.split('_')[1];cfg.exercises[i].icon=ic;saveCfg();renderExList();}
-  else if(ipt.startsWith('ml_')){const i=+ipt.split('_')[1];cfg.meals[i].icon=ic;saveCfg();renderMlList();}
-  closeIP();
-}
-
-let _tt;
-function showToast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2100);
-}
-
-// ══ STATISTIKEN ══
-const STAT_METRICS_BASE = [
-  {id:'water', label:'Wasser', color:'#60c8f0', unit:'%'},
-  {id:'steps', label:'Schritte', color:'#f0d060', unit:'%'},
-  {id:'fitness',label:'Übungen', color:'#f06060', unit:'%'},
-  {id:'meals',  label:'Mahlzeiten',color:'#c8f060',unit:'%'},
-  {id:'weight', label:'Gewicht',  color:'#a060f0', unit:'kg'},
-  {id:'smoke',  label:'Rauchen',  color:'#e08040', unit:'Zig.'},
-];
 function getExerciseMetrics(){
   if(!cfg.exercises||!cfg.exercises.length) return [];
   const exColors=['#f06060','#f09060','#f0c060','#a0f060','#60f0b0','#60c8f0','#a060f0','#f060b0'];
@@ -1312,11 +1486,9 @@ function getExerciseMetrics(){
     isExercise:true,
   }));
 }
-function getAllMetrics(){ return [...STAT_METRICS_BASE, ...getExerciseMetrics()]; }
-// visible exercise set (separate from statsVisible to keep things clean)
 let statsExVisible = new Set();
 let statsPeriod = 7;
-let statsVisible = new Set(['water','steps','fitness','meals','weight','smoke']);
+let statsVisible = new Set(['water','steps','teeth','fitness','meals','weight','smoke']);
 
 function openStats(){
   if(cfg.statsVisible) statsVisible=new Set(cfg.statsVisible);
@@ -1343,18 +1515,16 @@ function setStatsPeriod(n, el){
 
 function renderStatsChips(){
   const el = document.getElementById('stats-metric-chips');
-  const base = STAT_METRICS_BASE.map(m=>`
+  const base = getStatMetricsBase().map(m=>`
     <div class="schip ${statsVisible.has(m.id)?'active':''}"
       style="${statsVisible.has(m.id)?`border-color:${m.color};color:${m.color};background:${m.color}18`:''}"
       onclick="toggleStatMetric('${m.id}',this,'${m.color}')">${m.label}</div>
   `).join('');
   el.innerHTML = base;
-  // Exercise accordion
   const exMets = getExerciseMetrics();
   if(!exMets.length) return;
   const exWrap = document.createElement('div');
   exWrap.style.cssText='width:100%;margin-top:6px;border:1px solid var(--border);border-radius:10px;overflow:hidden;';
-  const anyVisible = exMets.some(m=>statsExVisible.has(m.id));
   exWrap.innerHTML=`
     <div id="ex-acc-hdr" onclick="toggleExAccordion()"
       style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;background:var(--surface2,var(--surface));user-select:none">
@@ -1378,7 +1548,6 @@ function toggleExAccordion(){
   saveCfg();
   const body = document.getElementById('ex-acc-body');
   const arrow = document.getElementById('ex-acc-arrow');
-  const hdrCount = document.querySelector('#ex-acc-hdr span span');
   if(body) body.style.display = cfg.exAccOpen ? 'block' : 'none';
   if(arrow) arrow.textContent = cfg.exAccOpen ? '▴' : '▾';
 }
@@ -1413,11 +1582,24 @@ function getStatValue(key, metricId){
   if(metricId==='water'){
     const ng=Math.ceil(cfg.water.goalMl/cfg.water.glassMl)||8;
     const f=(log.wf||[]).filter(Boolean).length;
+    const unit=cfg.water.statUnit||'pct';
+    if (unit === 'ml') return f * cfg.water.glassMl;
+    if (unit === 'l') return (f * cfg.water.glassMl) / 1000;
     return Math.round(f/ng*100);
   }
   if(metricId==='steps'){
     const goal=cfg.steps&&cfg.steps.goal||10000;
-    return Math.min(100,Math.round((log.sc||0)/goal*100));
+    const sc=log.sc||0;
+    const unit=cfg.steps.statUnit||'pct';
+    if (unit === 'steps') return sc;
+    if (unit === 'km') return sc * 0.000762;
+    return Math.min(100,Math.round(sc/goal*100));
+  }
+  if(metricId==='teeth'){
+    const goal=cfg.teeth?cfg.teeth.goal||2:2;
+    const arr=log.tb||[];
+    const c=arr.filter(Boolean).length;
+    return Math.min(100,Math.round(c/goal*100));
   }
   if(metricId==='fitness'){
     const dayExs=forDayKey(cfg.exercises,key);
@@ -1469,7 +1651,6 @@ function renderStatsCharts(){
     days.push({key:toKey(d), label:d.getDate()+'.'+(d.getMonth()+1)+'.'});
   }
 
-  // ── helper: draw one line series ────────────────────────────────────────
   function drawLine(ctx,pts,color,xOf,yOf,dpr,showDots,dashed,padT,ch,fillUnder){
     if(pts.length===1&&showDots){ctx.beginPath();ctx.arc(xOf(pts[0].i),yOf(pts[0].v),3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();return;}
     if(pts.length<2) return;
@@ -1503,14 +1684,26 @@ function renderStatsCharts(){
   const dpr=window.devicePixelRatio||1;
   const showDots=statsPeriod<=30;
 
-  // ── Base metrics ─────────────────────────────────────────────────────────
-  STAT_METRICS_BASE.forEach(m=>{
+  getStatMetricsBase().forEach(m=>{
     if(!statsVisible.has(m.id)) return;
     const vals=days.map(d=>({label:d.label,val:getStatValue(d.key,m.id)}));
     const nonNull=vals.filter(v=>v.val!==null);
     const hasData=nonNull.length>0;
-    const avg=nonNull.length?Math.round(nonNull.reduce((a,b)=>a+b.val,0)/nonNull.length):null;
-    const maxVal=nonNull.length?Math.max(...nonNull.map(v=>v.val)):null;
+    
+    let avg = null;
+    if(nonNull.length){
+      const sum = nonNull.reduce((a,b)=>a+b.val,0);
+      avg = sum / nonNull.length;
+      if (m.unit.includes('km') || m.unit.includes('L')) avg = avg.toFixed(1);
+      else avg = Math.round(avg);
+    }
+    
+    let maxVal = null;
+    if(nonNull.length){
+      maxVal = Math.max(...nonNull.map(v=>v.val));
+      if (m.unit.includes('km') || m.unit.includes('L')) maxVal = maxVal.toFixed(1);
+      else maxVal = Math.round(maxVal);
+    }
 
     const wrap=document.createElement('div');
     wrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 14px 10px;';
@@ -1531,22 +1724,33 @@ function renderStatsCharts(){
     const numVals=vals.map(v=>v.val!==null?v.val:null);
     const all=numVals.filter(v=>v!==null);
     let vMin=0,vMax=100;
-    if(m.id==='weight'){vMin=Math.max(0,Math.min(...all)-5);vMax=Math.max(...all)+5;}
-    if(m.id==='smoke'){vMin=0;vMax=Math.max(...all,cfg.smoke&&cfg.smoke.goal||20)+2;}
+    if(m.unit!=='%'){
+      vMin=Math.max(0,Math.min(...all)-(m.id==='weight'?5:0));
+      vMax=Math.max(...all)+(m.id==='weight'?5:(m.id==='smoke'?2:0));
+    }
     const range=vMax-vMin||1;
     const xOf=i=>padL+i/(days.length-1||1)*cw;
     const yOf=v=>padT+ch-(v-vMin)/range*ch;
 
     ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
-    [25,50,75,100].forEach(pct=>{if(pct<vMin||pct>vMax)return;const y=yOf(pct);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+cw,y);ctx.stroke();});
+    if(m.unit==='%'){
+      [25,50,75,100].forEach(pct=>{if(pct<vMin||pct>vMax)return;const y=yOf(pct);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+cw,y);ctx.stroke();});
+    }
+    
     if(m.id==='smoke'){const sg=cfg.smoke&&cfg.smoke.goal||20;if(sg>=vMin&&sg<=vMax){const gy=yOf(sg);ctx.setLineDash([4,3]);ctx.strokeStyle=m.color+'88';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+cw,gy);ctx.stroke();ctx.setLineDash([]);}}
 
     const pts=[];numVals.forEach((v,i)=>{if(v!==null)pts.push({i,v});});
     drawLine(ctx,pts,m.color,xOf,yOf,dpr,showDots,false,padT,ch,true);
-    if(pts.length){const p=pts[pts.length-1];ctx.fillStyle=m.color;ctx.font='bold 8px sans-serif';ctx.textAlign='right';ctx.fillText(Math.round(p.v)+m.unit,xOf(p.i),yOf(p.v)-6);}
+    if(pts.length){
+      const p=pts[pts.length-1];
+      ctx.fillStyle=m.color;ctx.font='bold 8px sans-serif';ctx.textAlign='right';
+      let dispV = p.v;
+      if (m.unit.includes('km') || m.unit.includes('L')) dispV = dispV.toFixed(1);
+      else dispV = Math.round(dispV);
+      ctx.fillText(dispV+m.unit,xOf(p.i),yOf(p.v)-6);
+    }
   });
 
-  // ── Exercise metrics: one chart per exercise with overlaid lines ──────────
   getExerciseMetrics().forEach(m=>{
     if(!statsExVisible.has(m.id)) return;
     const ex=cfg.exercises&&cfg.exercises.find(e=>e.id===m.exId);
@@ -1558,7 +1762,6 @@ function renderStatsCharts(){
     const wrap=document.createElement('div');
     wrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 14px 10px;';
 
-    // Header + last-value summary
     const lastV=(rawVals.filter(v=>v.val!==null).slice(-1)[0]||{}).val;
     let summaryHtml='Keine Daten';
     if(lastV){
@@ -1570,7 +1773,6 @@ function renderStatsCharts(){
       <span style="font-size:11px;color:var(--muted)">${summaryHtml}</span>`;
     wrap.appendChild(hdr);
 
-    // Legend
     const leg=document.createElement('div');leg.style.cssText='display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px';
     const hasKg=rawVals.some(v=>v.val&&v.val.kg!==null);
     if(ex.oneArm){
@@ -1594,8 +1796,6 @@ function renderStatsCharts(){
     const padL=4,padR=4,padT=8,padB=4,cw=W-padL-padR,ch=H-padT-padB;
     const xOf=i=>padL+i/(days.length-1||1)*cw;
 
-    // Reps series
-    // For oneArm: use .R / .L, otherwise .reps
     const repsRvals=ex.oneArm?rawVals.map(v=>v.val!==null?v.val.R:null):rawVals.map(v=>v.val!==null?v.val.reps:null);
     const repsLvals=ex.oneArm?rawVals.map(v=>v.val!==null?v.val.L:null):null;
     const kgVals=rawVals.map(v=>v.val!==null?v.val.kg:null);
@@ -1603,46 +1803,45 @@ function renderStatsCharts(){
     const allReps=[...repsRvals,...(repsLvals||[])].filter(v=>v!==null);
     const allKg=kgVals.filter(v=>v!==null);
 
-    // Reps Y axis
     const rMin=allReps.length?Math.max(0,Math.min(...allReps)-2):0;
     const rMax=allReps.length?Math.max(...allReps)+3:20;
     const rRange=rMax-rMin||1;
     const yReps=v=>padT+ch-(v-rMin)/rRange*ch;
 
-    // kg Y axis (independent scale, same pixel space)
     const kMin=allKg.length?Math.max(0,Math.min(...allKg)-5):0;
     const kMax=allKg.length?Math.max(...allKg)+5:50;
     const kRange=kMax-kMin||1;
     const yKg=v=>padT+ch-(v-kMin)/kRange*ch;
 
-    // Grid lines
     ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
     if(allReps.length){
       [0,0.33,0.66,1].forEach(f=>{const y=yReps(rMin+rRange*f);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+cw,y);ctx.stroke();});
     }
 
-    // Draw reps R (solid, fill)
     const ptsR=[];repsRvals.forEach((v,i)=>{if(v!==null)ptsR.push({i,v});});
     drawLine(ctx,ptsR,m.color,xOf,yReps,dpr,showDots,false,padT,ch,true);
 
-    // Draw reps L (solid, no fill, lighter)
     if(ex.oneArm&&repsLvals){
       const ptsL=[];repsLvals.forEach((v,i)=>{if(v!==null)ptsL.push({i,v});});
       drawLine(ctx,ptsL,m.color+'99',xOf,yReps,dpr,showDots,false,padT,ch,false);
     }
 
-    // Draw kg (dashed, grey, own Y scale)
     if(allKg.length){
       const ptsKg=[];kgVals.forEach((v,i)=>{if(v!==null)ptsKg.push({i,v});});
       drawLine(ctx,ptsKg,'#888888',xOf,yKg,dpr,false,true,padT,ch,false);
       if(ptsKg.length){const p=ptsKg[ptsKg.length-1];ctx.fillStyle='#888888';ctx.font='bold 8px sans-serif';ctx.textAlign='left';ctx.fillText(p.v+'kg',xOf(p.i)+4,yKg(p.v)+3);}
     }
 
-    // Reps value label on last point
     if(ptsR.length){const p=ptsR[ptsR.length-1];ctx.fillStyle=m.color;ctx.font='bold 8px sans-serif';ctx.textAlign='right';ctx.fillText(p.v,xOf(p.i),yReps(p.v)-6);}
   });
 }
+
 loadAll();
+const chips=document.querySelectorAll('.bbar-sort .schip');
+chips.forEach(c=>c.classList.remove('active'));
+if(sortMode==='pending'&&chips[1])chips[1].classList.add('active');
+else if(sortMode==='done'&&chips[2])chips[2].classList.add('active');
+else if(chips[0])chips[0].classList.add('active');
 renderThreePages();
 initSwipe();
 initItemSwipes();
