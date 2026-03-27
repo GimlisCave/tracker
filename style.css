@@ -262,7 +262,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 }
 .crow{margin-bottom:0}
 
-.sit-wrap{position:relative;overflow:hidden;border-radius:var(--rsm);margin-bottom:7px}
+.sit-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--rsm);
+  margin-bottom: 7px;
+  flex-shrink: 0;
+}
 .sit-bg{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 16px;font-size:18px;z-index:1}
 .sit-bg-l{left:0;color:#fff}
 .sit-bg-r{right:0;color:#fff}
