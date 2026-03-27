@@ -248,7 +248,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
   flex-direction: column;
   gap: 7px;
   margin-bottom: 12px;
-  max-height: 260px;
+  height: 260px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;
@@ -341,7 +341,7 @@ body, input, textarea, button, select, h1 {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 10px;
-  max-height: 220px;
+  height: 220px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;
