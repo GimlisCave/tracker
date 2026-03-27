@@ -71,7 +71,7 @@
     <div class="mcard" onclick="goSub('ov-groups')"><div class="mcard-ico">🗂</div><div class="mcard-txt"><b>Gruppen</b><small>Wochentage zuweisen</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-ex')"><div class="mcard-ico">🏋️</div><div class="mcard-txt"><b>Übungen</b><small>Sets, Wiederholungen, Gruppe</small></div><div class="mcard-arr">›</div></div>
     <div class="mcard" onclick="goSub('ov-meals')"><div class="mcard-ico">🥗</div><div class="mcard-txt"><b>Mahlzeiten</b><small>Kalorien, Beschreibung, Mealtime</small></div><div class="mcard-arr">›</div></div>
-    <div class="mcard" onclick="goSub('ov-data')"><div class="mcard-ico">💾</div><div class="mcard-txt"><b>Daten</b><small>Export & Import</small></div><div class="mcard-arr">›</div></div>
+    <div class="mcard" onclick="goSub('ov-data')"><div class="mcard-ico">💾</div><div class="mcard-txt"><b>Daten</b><small>Export & Import & Reset</small></div><div class="mcard-arr">›</div></div>
   </div>
 </div>
 
@@ -233,6 +233,11 @@
         <button class="exp-btn" onclick="exportData()">📤 Exportieren</button>
         <label class="exp-btn">📥 Importieren<input type="file" id="impin" accept=".json" onchange="importData(this)" style="display:none"></label>
       </div>
+    </section>
+    <section style="margin-top:20px">
+      <h3>Zurücksetzen</h3>
+      <div class="wnote" style="background:rgba(255,59,48,0.1);color:#ff3b30">Achtung: Dies löscht alle deine Einträge, Übungen und Einstellungen unwiderruflich!</div>
+      <button class="btn-reset" onclick="resetAllData()">🔄</button>
     </section>
   </div>
 </div>

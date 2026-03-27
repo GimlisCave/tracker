@@ -27,7 +27,17 @@ const WIDGET_DEFS = [
   {id:'wsmk',label:'Rauchen',icon:'🚬'},
   {id:'wtb',label:'Zähneputzen',icon:'🦷'},
 ];
-
+function resetAllData() {
+  const conf = confirm("Bist du sicher? Alle Daten und Einstellungen werden gelöscht!");
+  if (conf) {
+    const doubleConf = confirm("Wirklich alles löschen? Diese Aktion kann nicht rückgängig gemacht werden!");
+    if (doubleConf) {
+      localStorage.removeItem('dtc');
+      localStorage.removeItem('dtl');
+      location.reload();
+    }
+  }
+}
 function openWVis(){
   if(!cfg.hiddenWidgets)cfg.hiddenWidgets=['wsmk','wtb'];
   const el=document.getElementById('wvis-list');
