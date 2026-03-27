@@ -932,18 +932,25 @@ function setSort(m,el){
 }
 
 function applySort(key){
-  const c=document.getElementById('wlist-'+key);if(!c)return;
+  const c=document.getElementById('wlist-'+key);
+  if(!c)return;
   const ws=[...c.querySelectorAll('.widget')];
-  if(sortMode==='pending')ws.sort((a,b)=>a.classList.contains('done')-b.classList.contains('done'));
-  else if(sortMode==='done')ws.sort((a,b)=>b.classList.contains('done')-a.classList.contains('done'));
-  else {
+  
+  if(sortMode==='pending') {
+    ws.sort((a,b)=>a.classList.contains('done')-b.classList.contains('done'));
+  } else if(sortMode==='done') {
+    ws.sort((a,b)=>b.classList.contains('done')-a.classList.contains('done'));
+  } else {
     const order=getGlobalOrder();
     ws.sort((a,b)=>{
-      let aIdx=order.indexOf(a.id.split('-')[0]);if(aIdx===-1)aIdx=99;
-      let bIdx=order.indexOf(b.id.split('-')[0]);if(bIdx===-1)bIdx=99;
+      let aId = a.id.split('-')[0];
+      let bId = b.id.split('-')[0];
+      let aIdx=order.indexOf(aId); if(aIdx===-1) aIdx=99;
+      let bIdx=order.indexOf(bId); if(bIdx===-1) bIdx=99;
       return aIdx-bIdx;
     });
   }
+  
   ws.forEach(w=>c.appendChild(w));
 }
 
