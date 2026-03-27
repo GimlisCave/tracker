@@ -297,8 +297,24 @@ function jumpToDate(d){activeDate=new Date(d);activeDate.setHours(0,0,0,0);rende
 function saveCfg(){localStorage.setItem('dtc',JSON.stringify(cfg));}
 function saveLogs(){localStorage.setItem('dtl',JSON.stringify(logs));}
 function loadAll(){
-  try{const c=localStorage.getItem('dtc');if(c){const parsed=JSON.parse(c);cfg={...cfg,...parsed};if(!cfg.hiddenWidgets)cfg.hiddenWidgets=['wsmk','wtb'];if(cfg.sortMode)sortMode=cfg.sortMode;}}catch(e){}
-  try{const l=localStorage.getItem('dtl');if(l)logs=JSON.parse(l);}catch(e){}
+  try {
+    const c = localStorage.getItem('dtc');
+    if(c) {
+      const parsed = JSON.parse(c);
+      cfg = {...cfg, ...parsed};
+      if(!cfg.hiddenWidgets) cfg.hiddenWidgets = ['wsmk', 'wtb'];
+      
+      // WICHTIG: Den globalen sortMode auf den gespeicherten Wert setzen
+      if(cfg.sortMode) {
+        sortMode = cfg.sortMode;
+      }
+    }
+  } catch(e) { console.error("Cfg load error", e); }
+  
+  try {
+    const l = localStorage.getItem('dtl');
+    if(l) logs = JSON.parse(l);
+  } catch(e) { console.error("Logs load error", e); }
 }
 
 function glog(key){
@@ -932,26 +948,27 @@ function setSort(m,el){
 }
 
 function applySort(key){
-  const c=document.getElementById('wlist-'+key);
-  if(!c)return;
-  const ws=[...c.querySelectorAll('.widget')];
+  const c = document.getElementById('wlist-' + key);
+  if(!c) return;
+  const ws = [...c.querySelectorAll('.widget')];
   
-  if(sortMode==='pending') {
-    ws.sort((a,b)=>a.classList.contains('done')-b.classList.contains('done'));
-  } else if(sortMode==='done') {
-    ws.sort((a,b)=>b.classList.contains('done')-a.classList.contains('done'));
+  if(sortMode === 'pending') {
+    ws.sort((a,b) => a.classList.contains('done') - b.classList.contains('done'));
+  } else if(sortMode === 'done') {
+    ws.sort((a,b) => b.classList.contains('done') - a.classList.contains('done'));
   } else {
-    const order=getGlobalOrder();
-    ws.sort((a,b)=>{
+    // Standard-Modus nutzt die gespeicherte widgetOrder
+    const order = getGlobalOrder();
+    ws.sort((a,b) => {
       let aId = a.id.split('-')[0];
       let bId = b.id.split('-')[0];
-      let aIdx=order.indexOf(aId); if(aIdx===-1) aIdx=99;
-      let bIdx=order.indexOf(bId); if(bIdx===-1) bIdx=99;
-      return aIdx-bIdx;
+      let aIdx = order.indexOf(aId); if(aIdx === -1) aIdx = 99;
+      let bIdx = order.indexOf(bId); if(bIdx === -1) bIdx = 99;
+      return aIdx - bIdx;
     });
   }
   
-  ws.forEach(w=>c.appendChild(w));
+  ws.forEach(w => c.appendChild(w));
 }
 
 function initDrag(log,key){
@@ -1890,11 +1907,14 @@ function renderStatsCharts(){
 }
 
 loadAll();
-const chips=document.querySelectorAll('.bbar-sort .schip');
-chips.forEach(c=>c.classList.remove('active'));
-if(sortMode==='pending'&&chips[1])chips[1].classList.add('active');
-else if(sortMode==='done'&&chips[2])chips[2].classList.add('active');
-else if(chips[0])chips[0].classList.add('active');
+const chips = document.querySelectorAll('.bbar-sort .schip');
+if(chips.length > 0) {
+  chips.forEach(c => c.classList.remove('active'));
+  if(sortMode === 'pending' && chips[1]) chips[1].classList.add('active');
+  else if(sortMode === 'done' && chips[2]) chips[2].classList.add('active');
+  else if(chips[0]) chips[0].classList.add('active');
+}
+
 renderThreePages();
 initSwipe();
 initItemSwipes();
