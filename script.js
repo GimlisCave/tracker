@@ -255,6 +255,7 @@ function saveCheat() {
   const type = document.getElementById('ch-type').value;
   if (!name) { showToast('⚠️ Name fehlt'); return; }
   if (editCmName) {
+    if(!confirm(`„${editCmName}" wirklich bearbeiten und speichern?`)){closeCheat();return;}
     Object.values(logs).forEach(l => {
       if (l.cm) {
         l.cm.forEach(c => {
@@ -1211,7 +1212,15 @@ function renderCal(){
     (!isWidgetHidden('wsmk')?'<div class="cl-item"><div class="cl-dot" style="background:#e08040"></div>Rauchen</div>':'');
 }
 
-function openMenu(){document.getElementById('ov-menu').classList.add('open');}
+function openMenu(){
+  const hw=cfg.hiddenWidgets||[];
+  const map={'ov-steps':'ws','ov-water':'ww','ov-smoke':'wsmk','ov-teeth':'wtb','ov-ex':'wf','ov-meals':'wm'};
+  document.querySelectorAll('#ov-menu .mcard').forEach(card=>{
+    const m=card.getAttribute('onclick')&&card.getAttribute('onclick').match(/goSub\('([^']+)'\)/);
+    if(m&&map[m[1]]){card.style.display=hw.includes(map[m[1]])?'none':'';}
+  });
+  document.getElementById('ov-menu').classList.add('open');
+}
 function closeMenu(){document.getElementById('ov-menu').classList.remove('open');renderThreePages();}
 function goSub(id){
   document.getElementById('ov-menu').classList.remove('open');
@@ -1437,6 +1446,7 @@ function addEx(){
   const oneArm=document.getElementById('nex-onearm').checked;
   if(!name){showToast('⚠️ Name fehlt');return;}
   if(editExIdx>=0){
+    if(!confirm(`„${cfg.exercises[editExIdx].name}" wirklich bearbeiten und speichern?`)){editExIdx=-1;document.getElementById('btn-add-ex').textContent='+ Übung hinzufügen';document.getElementById('ex-form-title').textContent='Übung hinzufügen';document.getElementById('nex-name').value='';document.getElementById('nex-sets').value='';document.getElementById('nex-max').value='';document.getElementById('nex-onearm').checked=false;pendIco.nex='🏋️';document.getElementById('nex-ico').textContent='🏋️';renderExList();return;}
     cfg.exercises[editExIdx]={...cfg.exercises[editExIdx],icon:pendIco.nex,name,sets,maxReps,groupId,oneArm};
     editExIdx=-1;
     document.getElementById('btn-add-ex').textContent='+ Übung hinzufügen';
@@ -1520,6 +1530,7 @@ function addMl(){
   if(!name){showToast('⚠️ Name fehlt');return;}
   if(!types.length){showToast('⚠️ Typ wählen');return;}
   if(editMlIdx>=0){
+    if(!confirm(`„${cfg.meals[editMlIdx].name}" wirklich bearbeiten und speichern?`)){editMlIdx=-1;document.getElementById('btn-add-ml').textContent='+ Hinzufügen';document.getElementById('ml-form-title').textContent='Eintrag hinzufügen';document.getElementById('nml-name').value='';document.getElementById('nml-cals').value='';document.getElementById('nml-desc').value='';document.querySelectorAll('#nml-types .dchip').forEach(c=>c.classList.remove('on'));pendIco.nml='🥗';document.getElementById('nml-ico').textContent='🥗';renderMlList();return;}
     cfg.meals[editMlIdx]={...cfg.meals[editMlIdx],icon:pendIco.nml,types,cals,name,desc};
     editMlIdx=-1;
     document.getElementById('btn-add-ml').textContent='+ Hinzufügen';
@@ -1807,13 +1818,21 @@ function renderStatsCharts(){
     container.appendChild(wrap);
 
     const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-    const padL=4,padR=4,padT=8,padB=4,cw=W-padL-padR,ch=H-padT-padB;
+    const padL=4,padR=4,padT=16,padB=4,cw=W-padL-padR,ch=H-padT-padB;
     const numVals=vals.map(v=>v.val!==null?v.val:null);
     const all=numVals.filter(v=>v!==null);
+
+    let goalVal=null;
+    if(m.id==='water'&&(cfg.water.statUnit==='ml'||cfg.water.statUnit==='l')){goalVal=cfg.water.statUnit==='ml'?cfg.water.goalMl:cfg.water.goalMl/1000;}
+    if(m.id==='steps'&&(cfg.steps.statUnit==='steps'||cfg.steps.statUnit==='km')){goalVal=cfg.steps.statUnit==='steps'?cfg.steps.goal||10000:(cfg.steps.goal||10000)*0.000762;}
+    if(m.id==='teeth'&&m.unit==='x'){goalVal=cfg.teeth?cfg.teeth.goal||2:2;}
+    if(m.id==='meals'&&(cfg.calories&&cfg.calories.statUnit==='kcal')){goalVal=cfg.calories.goal||2000;}
+
     let vMin=0,vMax=100;
     if(m.unit!=='%'){
-      vMin=Math.max(0,Math.min(...all)-(m.id==='weight'?5:0));
-      vMax=Math.max(...all)+(m.id==='weight'?5:(m.id==='smoke'?2:(m.id==='teeth'?1:0)));
+      const allWithGoal=goalVal!==null?[...all,goalVal]:all;
+      vMin=Math.max(0,Math.min(...allWithGoal)-(m.id==='weight'?5:0));
+      vMax=Math.max(...allWithGoal)+(m.id==='weight'?5:(m.id==='smoke'?2:(m.id==='teeth'?1:0)));
     }
     const range=vMax-vMin||1;
     const xOf=i=>padL+i/(days.length-1||1)*cw;
@@ -1823,18 +1842,30 @@ function renderStatsCharts(){
     if(m.unit==='%'){
       [25,50,75,100].forEach(pct=>{if(pct<vMin||pct>vMax)return;const y=yOf(pct);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+cw,y);ctx.stroke();});
     }
-    
-    if(m.id==='smoke'){const sg=cfg.smoke&&cfg.smoke.goal||20;if(sg>=vMin&&sg<=vMax){const gy=yOf(sg);ctx.setLineDash([4,3]);ctx.strokeStyle=m.color+'88';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+cw,gy);ctx.stroke();ctx.setLineDash([]);}}
+
+    const goalsToDraw=[];
+    if(m.id==='smoke'){goalsToDraw.push(cfg.smoke&&cfg.smoke.goal||20);}
+    if(goalVal!==null){goalsToDraw.push(goalVal);}
+    goalsToDraw.forEach(gv=>{
+      if(gv<vMin||gv>vMax)return;
+      const gy=yOf(gv);
+      ctx.setLineDash([4,3]);ctx.strokeStyle=m.color+'88';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(padL,gy);ctx.lineTo(padL+cw,gy);ctx.stroke();
+      ctx.setLineDash([]);
+    });
 
     const pts=[];numVals.forEach((v,i)=>{if(v!==null)pts.push({i,v});});
     drawLine(ctx,pts,m.color,xOf,yOf,dpr,showDots,false,padT,ch,true);
     if(pts.length){
       const p=pts[pts.length-1];
-      ctx.fillStyle=m.color;ctx.font='bold 8px sans-serif';ctx.textAlign='right';
-      let dispV = p.v;
-      if (m.unit.includes('km') || m.unit.includes('L')) dispV = dispV.toFixed(1);
-      else dispV = Math.round(dispV);
-      ctx.fillText(dispV+m.unit,xOf(p.i),yOf(p.v)-6);
+      ctx.fillStyle=m.color;ctx.font='bold 8px sans-serif';
+      let dispV=p.v;
+      if(m.unit.includes('km')||m.unit.includes('L'))dispV=dispV.toFixed(1);
+      else dispV=Math.round(dispV);
+      const labelX=xOf(p.i);
+      const labelY=Math.max(padT+8,yOf(p.v)-4);
+      ctx.textAlign=labelX>cw*0.85?'right':'left';
+      ctx.fillText(dispV+m.unit,labelX,labelY);
     }
   });
 
