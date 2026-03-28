@@ -1463,6 +1463,8 @@ function delEx(i){
 function initMls(){
   if(!cfg.calories)cfg.calories={goal:2000};
   document.getElementById('s-cal-goal').value=cfg.calories.goal;
+  const su = document.getElementById('s-meals-unit');
+  if(su) su.value = cfg.calories.statUnit || 'pct';
   renderMlList();
   document.getElementById('nml-ico').textContent=pendIco.nml;
   const types=document.querySelectorAll('#nml-types .dchip');
@@ -1471,6 +1473,8 @@ function initMls(){
 function onCalC(){
   if(!cfg.calories)cfg.calories={goal:2000};
   cfg.calories.goal=parseInt(document.getElementById('s-cal-goal').value)||2000;
+  const su = document.getElementById('s-meals-unit');
+  if(su) cfg.calories.statUnit = su.value;
   saveCfg();
 }
 function renderMlList(){
@@ -1544,12 +1548,14 @@ function getStatMetricsBase(){
   const wLabel = wUnit === 'ml' ? ' ml' : wUnit === 'l' ? ' L' : '%';
   const sUnit = cfg.steps.statUnit || 'pct';
   const sLabel = sUnit === 'steps' ? ' Sch.' : sUnit === 'km' ? ' km' : '%';
+  const mUnit = cfg.calories && cfg.calories.statUnit || 'pct';
+  const mLabel = mUnit === 'kcal' ? ' kcal' : '%';
   return [
     {id:'water', label:'Wasser', color:'#60c8f0', unit: wLabel},
     {id:'steps', label:'Schritte', color:'#f0d060', unit: sLabel},
-    {id:'teeth', label:'Zähne', color:'#60f0c8', unit:'%'},
+    {id:'teeth', label:'Zähne', color:'#60f0c8', unit:'x'},
     {id:'fitness',label:'Übungen', color:'#f06060', unit:'%'},
-    {id:'meals',  label:'Mahlzeiten',color:'#c8f060',unit:'%'},
+    {id:'meals',  label:'Mahlzeiten',color:'#c8f060',unit: mLabel},
     {id:'weight', label:'Gewicht',  color:'#a060f0', unit:'kg'},
     {id:'smoke',  label:'Rauchen',  color:'#e08040', unit:'Zig.'},
   ];
@@ -1676,10 +1682,9 @@ function getStatValue(key, metricId){
     return Math.min(100,Math.round(sc/goal*100));
   }
   if(metricId==='teeth'){
-    const goal=cfg.teeth?cfg.teeth.goal||2:2;
     const arr=log.tb||[];
     const c=arr.filter(Boolean).length;
-    return Math.min(100,Math.round(c/goal*100));
+    return c > 0 ? c : null;
   }
   if(metricId==='fitness'){
     const dayExs=forDayKey(cfg.exercises,key);
@@ -1695,6 +1700,8 @@ function getStatValue(key, metricId){
     let c=0;
     dayMls.forEach(m=>{const ts=m.types&&m.types.length?m.types:(m.type?[m.type]:['Snack']);ts.forEach(t=>{if(log.md&&log.md[m.id+'_'+t])c+=(m.cals||0);});});
     if(log.cm)log.cm.forEach(ch=>c+=(ch.cals||0));
+    const mUnit = cfg.calories && cfg.calories.statUnit || 'pct';
+    if(mUnit === 'kcal') return c > 0 ? c : null;
     return Math.min(100,Math.round(c/goal*100));
   }
   if(metricId==='weight') return log.wg>0?log.wg:null;
@@ -1806,7 +1813,7 @@ function renderStatsCharts(){
     let vMin=0,vMax=100;
     if(m.unit!=='%'){
       vMin=Math.max(0,Math.min(...all)-(m.id==='weight'?5:0));
-      vMax=Math.max(...all)+(m.id==='weight'?5:(m.id==='smoke'?2:0));
+      vMax=Math.max(...all)+(m.id==='weight'?5:(m.id==='smoke'?2:(m.id==='teeth'?1:0)));
     }
     const range=vMax-vMin||1;
     const xOf=i=>padL+i/(days.length-1||1)*cw;

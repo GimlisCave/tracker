@@ -166,6 +166,13 @@
     <section>
       <h3>Kalorienziel</h3>
       <div class="frow"><label>Tagesziel (kcal)</label><input class="fi num" type="number" id="s-cal-goal" min="500" max="10000" step="100" oninput="onCalC()" style="width:110px"></div>
+      <div class="frow">
+        <label>Statistik Anzeige</label>
+        <select class="fi flex" id="s-meals-unit" onchange="onCalC()">
+          <option value="pct">% (Fortschritt)</option>
+          <option value="kcal">Kalorien (kcal)</option>
+        </select>
+      </div>
     </section>
     <section><h3>Bestehende Einträge</h3><div class="cfg-list" id="ml-list"></div></section>
     <section>
