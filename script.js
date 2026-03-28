@@ -1369,6 +1369,7 @@ function addGroup(){
   const days=getSelD('ng-days');
   if(!name){showToast('⚠️ Name fehlt');return;}
   if(editGrpIdx>=0){
+    if(!confirm(`„${cfg.groups[editGrpIdx].name}" wirklich bearbeiten und speichern?`)){editGrpIdx=-1;document.querySelector('#ov-groups .btn.gr').textContent='+ Gruppe hinzufügen';document.getElementById('ng-name').value='';renderGrpList();renderDChips('ng-days',[]);return;}
     cfg.groups[editGrpIdx]={...cfg.groups[editGrpIdx],name,color,days};
     editGrpIdx=-1;
     document.querySelector('#ov-groups .btn.gr').textContent='+ Gruppe hinzufügen';
