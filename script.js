@@ -1565,11 +1565,11 @@ function getStatMetricsBase(){
   return [
     {id:'water', label:'Wasser', color:'#60c8f0', unit: wLabel},
     {id:'steps', label:'Schritte', color:'#f0d060', unit: sLabel},
-    {id:'teeth', label:'Zähne', color:'#60f0c8', unit:'x'},
     {id:'fitness',label:'Übungen', color:'#f06060', unit:'%'},
     {id:'meals',  label:'Mahlzeiten',color:'#c8f060',unit: mLabel},
     {id:'weight', label:'Gewicht',  color:'#a060f0', unit:'kg'},
     {id:'smoke',  label:'Rauchen',  color:'#e08040', unit:'Zig.'},
+    {id:'teeth', label:'Zähne', color:'#60f0c8', unit:'x'},
   ];
 }
 function getExerciseMetrics(){
