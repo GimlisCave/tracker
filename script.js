@@ -561,7 +561,7 @@ function mkSteps(log,key){
       <div style="display:flex;align-items:center;gap:10px;margin-top:10px;background:rgba(255,255,255,0.05);border-radius:var(--rsm);padding:10px 12px">
         <span style="font-size:20px">🗺️</span>
         <span style="font-size:13px;color:var(--muted);flex:1">Gegangene km</span>
-        <span class="km-txt" style="font-size:15px;font-weight:700;color:var(--text)">${sc>0?(sc*0.000762).toFixed(1):'-'} km</span>
+        <span class="km-txt" style="font-size:15px;font-weight:700;color:var(--text)">${sc>0?(sc*getStrideFactor()).toFixed(1):'-'} km</span>
       </div>
     </div>`;
   return w;
@@ -573,7 +573,7 @@ function patchSteps(log,key){
   ws.querySelector('.wtit small').textContent=`${sc.toLocaleString('de')} / ${goal.toLocaleString('de')} · ${pct}%`;
   const pf=ws.querySelector('.pfill');if(pf)pf.style.width=pct+'%';
   ws.querySelector('.plbl').children[0].textContent=sc.toLocaleString('de')+' Schritte';
-  const kmEl=ws.querySelector('.km-txt');if(kmEl)kmEl.textContent=sc>0?(sc*0.000762).toFixed(1)+' km':'- km';
+  const kmEl=ws.querySelector('.km-txt');if(kmEl)kmEl.textContent=sc>0?(sc*getStrideFactor()).toFixed(1)+' km':'- km';
   ws.classList.toggle('done',pct>=100);
 }
 function setSteps(val,key){const log=glog(key);log.sc=Math.max(0,parseInt(val)||0);saveLogs();patchSteps(log,key);}
@@ -594,9 +594,9 @@ function setWeight(val, key) {
 
 function mkWeight(log, key) {
   const curWeight = log.wg || 0;
-  const d = new Date(key);d.setDate(d.getDate() - 7);
-  const oldKey = toKey(d);const oldLog = logs[oldKey];
-  const oldWeight = (oldLog && oldLog.wg) ? oldLog.wg : 0;
+  const d = new Date(key); d.setDate(d.getDate() - 7);
+  const oldKey = toKey(d);
+  const oldWeight = (logs[oldKey] && logs[oldKey].wg) ? logs[oldKey].wg : 0;
   let diffText = "Kein Vergleich", diffClass = "";
   if (curWeight > 0 && oldWeight > 0) {
     const diff = (curWeight - oldWeight).toFixed(2);
@@ -618,7 +618,7 @@ function mkWeight(log, key) {
       <div class="weight-row">
         <input class="weight-inp" type="number" step="0.01" value="${curWeight || ''}" 
           placeholder="0,00" 
-          onchange="setWeight(this.value, '${key}')" 
+          oninput="setWeight(this.value, '${key}')"
           onfocus="if(this.value=='0')this.value=''"
           inputmode="decimal">
         <div class="weight-stats">
@@ -1256,13 +1256,18 @@ function updWNote(){
 function initSteps(){
   document.getElementById('s-steps-goal').value=cfg.steps.goal||10000;
   document.getElementById('s-steps-unit').value=cfg.steps.statUnit || 'pct';
+  document.getElementById('s-steps-height').value=cfg.steps.heightCm||170;
 }
 function onStepsC(){
   cfg.steps.goal=parseInt(document.getElementById('s-steps-goal').value)||10000;
   cfg.steps.statUnit=document.getElementById('s-steps-unit').value;
+  cfg.steps.heightCm=parseInt(document.getElementById('s-steps-height').value)||170;
   saveCfg();
 }
-
+function getStrideFactor(){
+  const h=cfg.steps.heightCm||170;
+  return (h*0.413)/100000; // Schrittlänge in km
+}
 function initTeeth(){
   document.getElementById('s-teeth-goal').value = cfg.teeth ? cfg.teeth.goal || 2 : 2;
 }
@@ -1825,7 +1830,7 @@ function renderStatsCharts(){
 
     let goalVal=null;
     if(m.id==='water'&&(cfg.water.statUnit==='ml'||cfg.water.statUnit==='l')){goalVal=cfg.water.statUnit==='ml'?cfg.water.goalMl:cfg.water.goalMl/1000;}
-    if(m.id==='steps'&&(cfg.steps.statUnit==='steps'||cfg.steps.statUnit==='km')){goalVal=cfg.steps.statUnit==='steps'?cfg.steps.goal||10000:(cfg.steps.goal||10000)*0.000762;}
+    if(m.id==='steps'&&(cfg.steps.statUnit==='steps'||cfg.steps.statUnit==='km')){goalVal=cfg.steps.statUnit==='steps'?cfg.steps.goal||10000:(cfg.steps.goal||10000)*getStrideFactor()}
     if(m.id==='teeth'&&m.unit==='x'){goalVal=cfg.teeth?cfg.teeth.goal||2:2;}
     if(m.id==='meals'&&(cfg.calories&&cfg.calories.statUnit==='kcal')){goalVal=cfg.calories.goal||2000;}
 
